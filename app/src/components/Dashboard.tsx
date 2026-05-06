@@ -26,6 +26,7 @@ import { useFileOperations } from '../hooks/useFileOperations';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { useFileDownload } from '../hooks/useFileDownload';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useNotes } from '../hooks/useNotes';
 
 export function Dashboard({ onLogout }: { onLogout: () => void }) {
     const queryClient = useQueryClient();
@@ -35,6 +36,8 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
         store, folders, activeFolderId, setActiveFolderId, isSyncing, isConnected,
         handleLogout, handleSyncFolders, handleCreateFolder, handleFolderDelete
     } = useTelegramConnection(onLogout);
+
+    const { notes, setNotes } = useNotes();
 
 
     const [previewFile, setPreviewFile] = useState<TelegramFile | null>(null);
@@ -425,13 +428,14 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                     </div>
                 )}
                 <FileExplorer
-
                     files={displayedFiles}
                     loading={isLoading || isSearching}
                     error={error}
                     viewMode={viewMode}
                     selectedIds={selectedIds}
                     activeFolderId={activeFolderId}
+                    notes={notes}
+                    setNotes={setNotes}
                     onFileClick={handleFileClick}
                     onDelete={handleDelete}
                     onDownload={(id, name) => queueDownload(id, name, activeFolderId)}

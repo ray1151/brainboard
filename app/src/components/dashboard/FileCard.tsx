@@ -4,6 +4,7 @@ import { Folder, Eye, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { TelegramFile } from '../../types';
 import { FileTypeIcon } from '../FileTypeIcon';
+import { Note } from '../../lib/notes';
 
 interface FileCardProps {
     file: TelegramFile;
@@ -19,6 +20,8 @@ interface FileCardProps {
     activeFolderId?: number | null;
     height?: number;
     onToggleSelection?: () => void;
+    note?: Note | null;
+    setNotes?: React.Dispatch<React.SetStateAction<Record<string, Note>>>;
 }
 
 // Check if file is an image type that can have a thumbnail
@@ -27,11 +30,17 @@ function isImageFile(filename: string): boolean {
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext);
 }
 
-export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, onClick, onContextMenu, onDrop, onDragStart, onDragEnd, activeFolderId, height, onToggleSelection }: FileCardProps) {
+export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, onClick, onContextMenu, onDrop, onDragStart, onDragEnd, activeFolderId, height, onToggleSelection, note }: FileCardProps) {
     const isFolder = file.type === 'folder';
     const [isDragOver, setIsDragOver] = useState(false);
     const [thumbnail, setThumbnail] = useState<string | null>(null);
     const [thumbnailLoading, setThumbnailLoading] = useState(false);
+
+    useEffect(() => {
+        if (note) {
+            console.log(`[Brainboard] Note for file ${file.id} ("${file.name}"):`, note);
+        }
+    }, [note, file.id, file.name]);
 
     // Lazy load thumbnail for image files
     useEffect(() => {

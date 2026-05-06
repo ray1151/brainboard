@@ -6,6 +6,7 @@ import { EmptyState } from './EmptyState';
 import { TelegramFile } from '../../types';
 import { ContextMenu } from './ContextMenu';
 import { FileListItem } from './FileListItem';
+import { Note } from '../../lib/notes';
 
 type SortField = 'name' | 'size' | 'date';
 type SortDirection = 'asc' | 'desc';
@@ -17,6 +18,8 @@ interface FileExplorerProps {
     viewMode: 'grid' | 'list';
     selectedIds: number[];
     activeFolderId: number | null;
+    notes: Record<string, Note>;
+    setNotes: React.Dispatch<React.SetStateAction<Record<string, Note>>>;
     onFileClick: (e: React.MouseEvent, id: number) => void;
     onDelete: (id: number) => void;
     onDownload: (id: number, name: string) => void;
@@ -57,7 +60,7 @@ function useGridColumns(containerRef: React.RefObject<HTMLDivElement | null>) {
 }
 
 export function FileExplorer({
-    files, loading, error, viewMode, selectedIds, activeFolderId,
+    files, loading, error, viewMode, selectedIds, activeFolderId, notes, setNotes,
     onFileClick, onDelete, onDownload, onPreview, onManualUpload, onSelectionClear, onToggleSelection, onDrop, onDragStart, onDragEnd
 }: FileExplorerProps) {
     const [sortField, setSortField] = useState<SortField>('name');
@@ -255,6 +258,8 @@ export function FileExplorer({
                                                 activeFolderId={activeFolderId}
                                                 height={cardHeight}
                                                 onToggleSelection={() => onToggleSelection(file.id)}
+                                                note={notes[String(file.id)] ?? null}
+                                                setNotes={setNotes}
                                             />
                                         );
                                     })}
