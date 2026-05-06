@@ -39,7 +39,7 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                     This application cannot function here because it requires access to the system backend (Rust).
                 </p>
                 <div className="p-4 bg-gray-800 rounded-xl border border-gray-700 text-sm text-gray-300">
-                    Please open the <strong>Telegram Drive</strong> window in your OS taskbar/dock to continue.
+                    Please open the <strong>Brainboard</strong> window in your OS taskbar/dock to continue.
                 </div>
             </div>
         )
@@ -200,7 +200,7 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                     <div className="w-20 h-20 mb-6 mx-auto flex items-center justify-center filter drop-shadow-lg">
                         <img src="/logo.svg" alt="Logo" className="w-full h-full" />
                     </div>
-                    <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">Telegram Drive</h1>
+                    <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">Brainboard</h1>
                     <p className="text-sm text-white/60 font-medium">Self-Hosted Secure Storage</p>
                 </div>
 
@@ -462,55 +462,55 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="glass bg-telegram-surface border border-telegram-border rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl"
+                            className="glass bg-brand-surface border border-brand-border rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-telegram-text">Getting Started</h2>
-                                <button onClick={() => setShowHelp(false)} className="p-2 hover:bg-telegram-hover rounded-lg transition-colors">
-                                    <X className="w-5 h-5 text-telegram-subtext" />
+                                <h2 className="text-xl font-bold text-brand-text">Getting Started</h2>
+                                <button onClick={() => setShowHelp(false)} className="p-2 hover:bg-brand-hover rounded-lg transition-colors">
+                                    <X className="w-5 h-5 text-brand-subtext" />
                                 </button>
                             </div>
 
-                            <div className="space-y-6 text-telegram-text">
-                                <div className="p-4 bg-telegram-primary/10 border border-telegram-primary/20 rounded-xl">
-                                    <p className="text-sm text-telegram-subtext">
-                                        <strong className="text-telegram-primary">Telegram Drive</strong> uses your Telegram account as secure cloud storage. You'll need a Telegram account and API credentials to get started.
+                            <div className="space-y-6 text-brand-text">
+                                <div className="p-4 bg-brand-primary/10 border border-brand-primary/20 rounded-xl">
+                                    <p className="text-sm text-brand-subtext">
+                                        <strong className="text-brand-primary">Brainboard</strong> uses your Telegram account as secure cloud storage. You'll need a Telegram account and API credentials to get started.
                                     </p>
                                 </div>
 
                                 <div className="space-y-4">
                                     <h3 className="font-semibold flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-telegram-primary text-white text-xs font-bold rounded-full flex items-center justify-center">1</span>
+                                        <span className="w-6 h-6 bg-brand-primary text-white text-xs font-bold rounded-full flex items-center justify-center">1</span>
                                         Go to Telegram's Developer Portal
                                     </h3>
-                                    <p className="text-sm text-telegram-subtext ml-8">
-                                        Visit <button type="button" onClick={(e) => { e.preventDefault(); open('https://my.telegram.org'); }} className="text-telegram-primary underline hover:text-telegram-text cursor-pointer">my.telegram.org</button> and log in with your phone number.
+                                    <p className="text-sm text-brand-subtext ml-8">
+                                        Visit <button type="button" onClick={(e) => { e.preventDefault(); open('https://my.telegram.org'); }} className="text-brand-primary underline hover:text-brand-text cursor-pointer">my.telegram.org</button> and log in with your phone number.
                                     </p>
                                 </div>
 
                                 <div className="space-y-4">
                                     <h3 className="font-semibold flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-telegram-primary text-white text-xs font-bold rounded-full flex items-center justify-center">2</span>
+                                        <span className="w-6 h-6 bg-brand-primary text-white text-xs font-bold rounded-full flex items-center justify-center">2</span>
                                         Create a New Application
                                     </h3>
-                                    <p className="text-sm text-telegram-subtext ml-8">
+                                    <p className="text-sm text-brand-subtext ml-8">
                                         Click on <strong>"API development tools"</strong> and create a new application. Use any name and description you like.
                                     </p>
                                 </div>
 
                                 <div className="space-y-4">
                                     <h3 className="font-semibold flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-telegram-primary text-white text-xs font-bold rounded-full flex items-center justify-center">3</span>
+                                        <span className="w-6 h-6 bg-brand-primary text-white text-xs font-bold rounded-full flex items-center justify-center">3</span>
                                         Copy Your Credentials
                                     </h3>
-                                    <p className="text-sm text-telegram-subtext ml-8">
+                                    <p className="text-sm text-brand-subtext ml-8">
                                         After creating the app, you'll see your <strong>API ID</strong> (a number) and <strong>API Hash</strong> (a string). Copy both and paste them into the fields on the previous screen.
                                     </p>
                                 </div>
 
-                                <div className="p-4 bg-telegram-hover rounded-xl border border-telegram-border">
-                                    <p className="text-xs text-telegram-subtext">
+                                <div className="p-4 bg-brand-hover rounded-xl border border-brand-border">
+                                    <p className="text-xs text-brand-subtext">
                                         <strong>🔒 Privacy:</strong> Your credentials are stored locally on your device and are never sent to any third-party servers. All data goes directly between you and Telegram.
                                     </p>
                                 </div>
@@ -518,7 +518,7 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                                 <button
                                     type="button"
                                     onClick={(e) => { e.preventDefault(); open('https://my.telegram.org'); }}
-                                    className="w-full bg-telegram-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-telegram-primary/90 transition-colors"
+                                    className="w-full bg-brand-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-brand-primary/90 transition-colors"
                                 >
                                     <ExternalLink className="w-4 h-4" />
                                     Open my.telegram.org
@@ -542,21 +542,21 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="glass bg-telegram-surface border border-telegram-border rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+                            className="glass bg-brand-surface border border-brand-border rounded-2xl p-6 max-w-sm w-full shadow-2xl"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="relative flex items-center justify-center mb-6">
-                                <h2 className="text-xl font-bold text-telegram-text text-center">
+                                <h2 className="text-xl font-bold text-brand-text text-center">
                                     Support the Project
                                 </h2>
-                                <button onClick={() => setShowDonate(false)} className="absolute right-0 p-2 hover:bg-telegram-hover rounded-lg transition-colors">
-                                    <X className="w-5 h-5 text-telegram-subtext" />
+                                <button onClick={() => setShowDonate(false)} className="absolute right-0 p-2 hover:bg-brand-hover rounded-lg transition-colors">
+                                    <X className="w-5 h-5 text-brand-subtext" />
                                 </button>
                             </div>
 
                             <div className="space-y-4 text-center">
-                                <p className="text-sm text-telegram-subtext mb-6">
-                                    If you find Telegram Drive useful, consider supporting its development!
+                                <p className="text-sm text-brand-subtext mb-6">
+                                    If you find Brainboard useful, consider supporting its development!
                                 </p>
 
                                 <div className="space-y-4">

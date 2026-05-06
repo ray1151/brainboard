@@ -205,7 +205,7 @@ export function PdfViewer({ file, onClose, onNext, onPrev, currentIndex, totalIt
             >
                 {loading && (
                     <div className="flex flex-col items-center justify-center flex-1 text-white absolute inset-0">
-                        <div className="w-10 h-10 border-4 border-telegram-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <div className="w-10 h-10 border-4 border-brand-primary border-t-transparent rounded-full animate-spin mb-4"></div>
                         <p>Loading document...</p>
                         <p className="text-xs text-white/50 mt-1">Downloading from Telegram...</p>
                     </div>

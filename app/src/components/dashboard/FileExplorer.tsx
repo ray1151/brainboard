@@ -148,14 +148,14 @@ export function FileExplorer({
     const SortIcon = ({ field }: { field: SortField }) => {
         if (sortField !== field) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
         return sortDirection === 'asc'
-            ? <ArrowUp className="w-3 h-3 text-telegram-primary" />
-            : <ArrowDown className="w-3 h-3 text-telegram-primary" />;
+            ? <ArrowUp className="w-3 h-3 text-brand-primary" />
+            : <ArrowDown className="w-3 h-3 text-brand-primary" />;
     };
 
     if (loading) {
         return (
-            <div className="flex-1 p-6 flex justify-center items-center text-telegram-subtext flex-col gap-4">
-                <div className="w-8 h-8 border-4 border-telegram-primary border-t-transparent rounded-full animate-spin"></div>
+            <div className="flex-1 p-6 flex justify-center items-center text-brand-subtext flex-col gap-4">
+                <div className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
                 Loading your files...
             </div>
         )
@@ -184,23 +184,23 @@ export function FileExplorer({
             {viewMode === 'grid' ? (
                 <>
 
-                    <div className="flex items-center gap-2 mb-4 text-xs text-telegram-subtext">
+                    <div className="flex items-center gap-2 mb-4 text-xs text-brand-subtext">
                         <span>Sort by:</span>
                         <button
                             onClick={() => handleSort('name')}
-                            className={`px-2 py-1 rounded flex items-center gap-1 hover:bg-white/5 ${sortField === 'name' ? 'text-telegram-primary' : ''}`}
+                            className={`px-2 py-1 rounded flex items-center gap-1 hover:bg-white/5 ${sortField === 'name' ? 'text-brand-primary' : ''}`}
                         >
                             Name <SortIcon field="name" />
                         </button>
                         <button
                             onClick={() => handleSort('size')}
-                            className={`px-2 py-1 rounded flex items-center gap-1 hover:bg-white/5 ${sortField === 'size' ? 'text-telegram-primary' : ''}`}
+                            className={`px-2 py-1 rounded flex items-center gap-1 hover:bg-white/5 ${sortField === 'size' ? 'text-brand-primary' : ''}`}
                         >
                             Size <SortIcon field="size" />
                         </button>
                         <button
                             onClick={() => handleSort('date')}
-                            className={`px-2 py-1 rounded flex items-center gap-1 hover:bg-white/5 ${sortField === 'date' ? 'text-telegram-primary' : ''}`}
+                            className={`px-2 py-1 rounded flex items-center gap-1 hover:bg-white/5 ${sortField === 'date' ? 'text-brand-primary' : ''}`}
                         >
                             Date <SortIcon field="date" />
                         </button>
@@ -230,7 +230,7 @@ export function FileExplorer({
                                                 <button
                                                     key="upload"
                                                     onClick={(e) => { e.stopPropagation(); onManualUpload(); }}
-                                                    className="border-2 border-dashed border-telegram-border rounded-xl flex flex-col items-center justify-center text-telegram-subtext hover:border-telegram-primary hover:text-telegram-primary transition-all group"
+                                                    className="border-2 border-dashed border-brand-border rounded-xl flex flex-col items-center justify-center text-brand-subtext hover:border-brand-primary hover:text-brand-primary transition-all group"
                                                     style={{ height: `${cardHeight}px` }}
                                                 >
                                                     <Plus className="w-8 h-8 mb-2 group-hover:scale-110 transition-transform" />
@@ -266,15 +266,15 @@ export function FileExplorer({
             ) : (
                 <div className="flex flex-col w-full">
                     {/* List Header */}
-                    <div className="grid grid-cols-[2rem_2fr_6rem_8rem] gap-4 px-4 py-2 text-xs font-semibold text-telegram-subtext border-b border-telegram-border mb-2 select-none items-center">
+                    <div className="grid grid-cols-[2rem_2fr_6rem_8rem] gap-4 px-4 py-2 text-xs font-semibold text-brand-subtext border-b border-brand-border mb-2 select-none items-center">
                         <div className="text-center">#</div>
-                        <button onClick={() => handleSort('name')} className="flex items-center gap-1 hover:text-telegram-text transition-colors">
+                        <button onClick={() => handleSort('name')} className="flex items-center gap-1 hover:text-brand-text transition-colors">
                             Name <SortIcon field="name" />
                         </button>
-                        <button onClick={() => handleSort('size')} className="flex items-center gap-1 justify-end hover:text-telegram-text transition-colors">
+                        <button onClick={() => handleSort('size')} className="flex items-center gap-1 justify-end hover:text-brand-text transition-colors">
                             Size <SortIcon field="size" />
                         </button>
-                        <button onClick={() => handleSort('date')} className="flex items-center gap-1 justify-end hover:text-telegram-text transition-colors">
+                        <button onClick={() => handleSort('date')} className="flex items-center gap-1 justify-end hover:text-brand-text transition-colors">
                             Date <SortIcon field="date" />
                         </button>
                     </div>
@@ -295,7 +295,7 @@ export function FileExplorer({
                                     >
                                         <button
                                             onClick={(e) => { e.stopPropagation(); onManualUpload(); }}
-                                            className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer border border-dashed border-telegram-border text-telegram-subtext hover:text-telegram-text hover:bg-telegram-hover w-full"
+                                            className="flex items-center gap-4 px-4 py-3 rounded-lg cursor-pointer border border-dashed border-brand-border text-brand-subtext hover:text-brand-text hover:bg-brand-hover w-full"
                                         >
                                             <div className="w-5 h-5 flex items-center justify-center"><Plus className="w-4 h-4" /></div>
                                             <span className="text-sm font-medium">Upload File...</span>

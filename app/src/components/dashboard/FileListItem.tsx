@@ -31,7 +31,7 @@ export function FileListItem({
             draggable
             onDragStart={(e) => {
                 if (onDragStart) onDragStart(file.id);
-                e.dataTransfer.setData("application/x-telegram-file-id", file.id.toString());
+                e.dataTransfer.setData("application/x-brand-file-id", file.id.toString());
                 e.dataTransfer.effectAllowed = 'move';
             }}
             onDragEnd={() => {
@@ -59,25 +59,25 @@ export function FileListItem({
                     onDrop(e, file.id);
                 }
             }}
-            className={`group grid grid-cols-[2rem_2fr_6rem_8rem] gap-4 items-center px-4 py-3 rounded-lg cursor-pointer border border-transparent transition-all hover:bg-telegram-hover 
-                ${selectedIds.includes(file.id) ? 'bg-telegram-primary/10 border-telegram-primary/20' : ''}
-                ${isDragOver ? 'ring-2 ring-telegram-primary bg-telegram-primary/20' : ''}
+            className={`group grid grid-cols-[2rem_2fr_6rem_8rem] gap-4 items-center px-4 py-3 rounded-lg cursor-pointer border border-transparent transition-all hover:bg-brand-hover 
+                ${selectedIds.includes(file.id) ? 'bg-brand-primary/10 border-brand-primary/20' : ''}
+                ${isDragOver ? 'ring-2 ring-brand-primary bg-brand-primary/20' : ''}
             `}
         >
             <div className="flex justify-center">
-                {isFolder ? <Folder className="w-5 h-5 text-telegram-primary" /> : <FileTypeIcon filename={file.name} className="w-5 h-5" />}
+                {isFolder ? <Folder className="w-5 h-5 text-brand-primary" /> : <FileTypeIcon filename={file.name} className="w-5 h-5" />}
             </div>
-            <div className="truncate text-sm text-telegram-text font-medium relative pr-8">
+            <div className="truncate text-sm text-brand-text font-medium relative pr-8">
                 {file.name}
                 {/* List Actions */}
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center bg-telegram-surface border border-telegram-border shadow-lg rounded px-1">
-                    <button onClick={(e) => { e.stopPropagation(); onPreview(file) }} className="p-1 hover:text-telegram-text text-telegram-subtext" title="Preview"><Eye className="w-4 h-4" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); onDownload(file.id, file.name) }} className="p-1 hover:text-telegram-text text-telegram-subtext" title="Download"><HardDrive className="w-4 h-4" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); onDelete(file.id) }} className="p-1 hover:text-red-400 text-telegram-subtext" title="Delete"><Plus className="w-4 h-4 rotate-45" /></button>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center bg-brand-surface border border-brand-border shadow-lg rounded px-1">
+                    <button onClick={(e) => { e.stopPropagation(); onPreview(file) }} className="p-1 hover:text-brand-text text-brand-subtext" title="Preview"><Eye className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); onDownload(file.id, file.name) }} className="p-1 hover:text-brand-text text-brand-subtext" title="Download"><HardDrive className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); onDelete(file.id) }} className="p-1 hover:text-red-400 text-brand-subtext" title="Delete"><Plus className="w-4 h-4 rotate-45" /></button>
                 </div>
             </div>
-            <div className="text-right text-xs text-telegram-subtext truncate">{file.sizeStr}</div>
-            <div className="text-right text-xs text-telegram-subtext font-mono opacity-50 truncate">{file.created_at || '-'}</div>
+            <div className="text-right text-xs text-brand-subtext truncate">{file.sizeStr}</div>
+            <div className="text-right text-xs text-brand-subtext font-mono opacity-50 truncate">{file.created_at || '-'}</div>
         </div>
     );
 }

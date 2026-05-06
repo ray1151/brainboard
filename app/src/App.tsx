@@ -20,7 +20,7 @@ function AppContent() {
   const { available, version, downloading, progress, downloadAndInstall, dismissUpdate } = useUpdateCheck();
 
   return (
-    <main className="h-screen w-screen text-telegram-text overflow-hidden selection:bg-telegram-primary/30 relative">
+    <main className="h-screen w-screen text-brand-text overflow-hidden selection:bg-brand-primary/30 relative">
       <UpdateBanner
         available={available}
         version={version}

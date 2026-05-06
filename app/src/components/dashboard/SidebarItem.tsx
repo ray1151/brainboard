@@ -57,13 +57,13 @@ export function SidebarItem({ icon: Icon, label, active = false, onClick, onDrop
                 }
             }}
             className={`group w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${active
-                ? 'bg-telegram-primary/10 text-telegram-primary'
+                ? 'bg-brand-primary/10 text-brand-primary'
                 : isOver
-                    ? 'bg-telegram-primary/30 text-telegram-text ring-2 ring-telegram-primary scale-[1.02] shadow-lg'
-                    : 'text-telegram-subtext hover:bg-telegram-hover hover:text-telegram-text'
+                    ? 'bg-brand-primary/30 text-brand-text ring-2 ring-brand-primary scale-[1.02] shadow-lg'
+                    : 'text-brand-subtext hover:bg-brand-hover hover:text-brand-text'
                 }`}
         >
-            <Icon className={`w-4 h-4 ${isOver ? 'text-telegram-primary' : ''}`} />
+            <Icon className={`w-4 h-4 ${isOver ? 'text-brand-primary' : ''}`} />
             <span className="flex-1 text-left truncate">{label}</span>
             {onDelete && (
                 <div onClick={(e) => { e.stopPropagation(); onDelete(); }} className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400">

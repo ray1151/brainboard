@@ -291,7 +291,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
         e.preventDefault();
         e.stopPropagation();
 
-        const dataTransferFileId = e.dataTransfer.getData("application/x-telegram-file-id");
+        const dataTransferFileId = e.dataTransfer.getData("application/x-brand-file-id");
 
         if (activeFolderId === targetFolderId) return;
 
@@ -345,7 +345,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
 
     return (
         <div
-            className="flex h-screen w-full overflow-hidden bg-telegram-bg relative"
+            className="flex h-screen w-full overflow-hidden bg-brand-bg relative"
             onClick={() => setSelectedIds([])}
             onDragOver={handleRootDragOver}
             onDragEnter={handleRootDragEnter}
@@ -419,8 +419,8 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                 />
                 {searchTerm.length > 2 && (
                     <div className="px-6 pt-4 pb-0">
-                        <h2 className="text-sm font-medium text-telegram-subtext">
-                            Search Results for <span className="text-telegram-primary">"{searchTerm}"</span>
+                        <h2 className="text-sm font-medium text-brand-subtext">
+                            Search Results for <span className="text-brand-primary">"{searchTerm}"</span>
                         </h2>
                     </div>
                 )}

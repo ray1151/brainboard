@@ -37,10 +37,10 @@ export function Sidebar({
     }
 
     return (
-        <aside className="w-64 bg-telegram-surface border-r border-telegram-border flex flex-col" onClick={e => e.stopPropagation()}>
+        <aside className="w-64 bg-brand-surface border-r border-brand-border flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="p-4 flex items-center gap-2">
                 <img src="/logo.svg" className="w-8 h-8 drop-shadow-lg" alt="Logo" />
-                <span className="font-bold text-lg text-telegram-text tracking-tight">Telegram Drive</span>
+                <span className="font-bold text-lg text-brand-text tracking-tight">Brainboard</span>
             </div>
 
             {/* Scrollable folder list */}
@@ -68,13 +68,13 @@ export function Sidebar({
             </nav>
 
             {/* Sticky Create Folder section — always visible above the footer */}
-            <div className="px-2 pb-2 border-b border-telegram-border">
+            <div className="px-2 pb-2 border-b border-brand-border">
                 {showNewFolderInput ? (
                     <div className="px-3 py-2">
                         <input
                             autoFocus
                             type="text"
-                            className="w-full bg-white/10 rounded px-2 py-1 text-sm text-white focus:outline-none focus:ring-1 focus:ring-telegram-primary"
+                            className="w-full bg-white/10 rounded px-2 py-1 text-sm text-white focus:outline-none focus:ring-1 focus:ring-brand-primary"
                             placeholder="Folder Name"
                             value={newFolderName}
                             onChange={e => setNewFolderName(e.target.value)}
@@ -85,7 +85,7 @@ export function Sidebar({
                 ) : (
                     <button
                         onClick={() => setShowNewFolderInput(true)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-telegram-subtext hover:bg-telegram-hover hover:text-telegram-text transition-colors border border-dashed border-telegram-border"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-brand-subtext hover:bg-brand-hover hover:text-brand-text transition-colors border border-dashed border-brand-border"
                     >
                         <Plus className="w-4 h-4" />
                         Create Folder
@@ -93,8 +93,8 @@ export function Sidebar({
                 )}
             </div>
 
-            <div className="p-4 border-t border-telegram-border">
-                <div className="flex items-center gap-2 text-telegram-subtext text-xs">
+            <div className="p-4 border-t border-brand-border">
+                <div className="flex items-center gap-2 text-brand-subtext text-xs">
                     <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                     <span>{isConnected ? 'Connected to Telegram' : 'Disconnected from Telegram'}</span>
                 </div>
