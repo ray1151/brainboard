@@ -30,6 +30,50 @@ function isImageFile(filename: string): boolean {
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext);
 }
 
+const NOTE_COLORS: Record<string, { bg: string; fold: string }> = {
+    yellow: { bg: '#FFF4D6', fold: '#F5E5A8' },
+    pink:   { bg: '#FFD6E5', fold: '#F5B8D0' },
+    blue:   { bg: '#D6E5FF', fold: '#B8CFFF' },
+    green:  { bg: '#D6F5DC', fold: '#B8E8C0' },
+};
+
+const NOTE_SIZE = 80;
+const FOLD = 18;
+
+function StickyNoteOverlay({ note }: { note: Note }) {
+    const colors = NOTE_COLORS[note.color] ?? NOTE_COLORS.yellow;
+    const bodyPath = `M0,0 L${NOTE_SIZE},0 L${NOTE_SIZE},${NOTE_SIZE - FOLD} L${NOTE_SIZE - FOLD},${NOTE_SIZE} L0,${NOTE_SIZE} Z`;
+    const foldPath = `M${NOTE_SIZE},${NOTE_SIZE - FOLD} L${NOTE_SIZE - FOLD},${NOTE_SIZE} L${NOTE_SIZE},${NOTE_SIZE} Z`;
+
+    return (
+        <div
+            className="absolute pointer-events-none"
+            style={{ bottom: -8, right: -8, width: NOTE_SIZE, height: NOTE_SIZE, zIndex: 15, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
+        >
+            <svg width={NOTE_SIZE} height={NOTE_SIZE} viewBox={`0 0 ${NOTE_SIZE} ${NOTE_SIZE}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+                <path d={bodyPath} fill={colors.bg} />
+                <path d={foldPath} fill={colors.fold} />
+            </svg>
+            <div style={{
+                position: 'absolute',
+                top: 6,
+                left: 6,
+                right: FOLD + 6,
+                bottom: FOLD + 6,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '9px',
+                lineHeight: '1.4',
+                color: '#1A1A1A',
+                overflow: 'hidden',
+                wordBreak: 'break-word',
+                userSelect: 'none',
+            }}>
+                {note.text}
+            </div>
+        </div>
+    );
+}
+
 export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, onClick, onContextMenu, onDrop, onDragStart, onDragEnd, activeFolderId, height, onToggleSelection, note }: FileCardProps) {
     const isFolder = file.type === 'folder';
     const [isDragOver, setIsDragOver] = useState(false);
@@ -163,6 +207,8 @@ export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, on
                     </button>
                 </div>
             </motion.div>
+
+            {note && <StickyNoteOverlay note={note} />}
         </div>
     )
 }
