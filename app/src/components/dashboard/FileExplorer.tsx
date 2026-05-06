@@ -20,6 +20,9 @@ interface FileExplorerProps {
     activeFolderId: number | null;
     notes: Record<string, Note>;
     setNotes: React.Dispatch<React.SetStateAction<Record<string, Note>>>;
+    editingFileId: number | null;
+    onStartEditNote: (id: number) => void;
+    onSaveNote: (id: number, text: string, color: string) => void;
     onFileClick: (e: React.MouseEvent, id: number) => void;
     onDelete: (id: number) => void;
     onDownload: (id: number, name: string) => void;
@@ -61,6 +64,7 @@ function useGridColumns(containerRef: React.RefObject<HTMLDivElement | null>) {
 
 export function FileExplorer({
     files, loading, error, viewMode, selectedIds, activeFolderId, notes, setNotes,
+    editingFileId, onStartEditNote, onSaveNote,
     onFileClick, onDelete, onDownload, onPreview, onManualUpload, onSelectionClear, onToggleSelection, onDrop, onDragStart, onDragEnd
 }: FileExplorerProps) {
     const [sortField, setSortField] = useState<SortField>('name');
@@ -260,6 +264,9 @@ export function FileExplorer({
                                                 onToggleSelection={() => onToggleSelection(file.id)}
                                                 note={notes[String(file.id)] ?? null}
                                                 setNotes={setNotes}
+                                                editingFileId={editingFileId}
+                                                onStartEditNote={onStartEditNote}
+                                                onSaveNote={onSaveNote}
                                             />
                                         );
                                     })}

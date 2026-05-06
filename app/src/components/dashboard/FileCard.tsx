@@ -22,6 +22,9 @@ interface FileCardProps {
     onToggleSelection?: () => void;
     note?: Note | null;
     setNotes?: React.Dispatch<React.SetStateAction<Record<string, Note>>>;
+    editingFileId?: number | null;
+    onStartEditNote?: (id: number) => void;
+    onSaveNote?: (id: number, text: string, color: string) => void;
 }
 
 // Check if file is an image type that can have a thumbnail
@@ -31,24 +34,25 @@ function isImageFile(filename: string): boolean {
 }
 
 const NOTE_COLORS: Record<string, { bg: string; fold: string }> = {
-    yellow: { bg: '#FFF4D6', fold: '#F5E5A8' },
-    pink:   { bg: '#FFD6E5', fold: '#F5B8D0' },
-    blue:   { bg: '#D6E5FF', fold: '#B8CFFF' },
-    green:  { bg: '#D6F5DC', fold: '#B8E8C0' },
+    yellow: { bg: '#FFE082', fold: '#FFCD3F' },
+    pink:   { bg: '#FFB8C8', fold: '#FF9CB6' },
+    blue:   { bg: '#B8D4FF', fold: '#91BCFF' },
+    green:  { bg: '#B8E8C0', fold: '#91D9A0' },
 };
 
 const NOTE_SIZE = 80;
 const FOLD = 18;
 
-function StickyNoteOverlay({ note }: { note: Note }) {
+function StickyNoteOverlay({ note, onClick }: { note: Note; onClick: () => void }) {
     const colors = NOTE_COLORS[note.color] ?? NOTE_COLORS.yellow;
     const bodyPath = `M0,0 L${NOTE_SIZE},0 L${NOTE_SIZE},${NOTE_SIZE - FOLD} L${NOTE_SIZE - FOLD},${NOTE_SIZE} L0,${NOTE_SIZE} Z`;
     const foldPath = `M${NOTE_SIZE},${NOTE_SIZE - FOLD} L${NOTE_SIZE - FOLD},${NOTE_SIZE} L${NOTE_SIZE},${NOTE_SIZE} Z`;
 
     return (
         <div
-            className="absolute pointer-events-none"
+            className="absolute cursor-pointer"
             style={{ bottom: -8, right: -8, width: NOTE_SIZE, height: NOTE_SIZE, zIndex: 15, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
         >
             <svg width={NOTE_SIZE} height={NOTE_SIZE} viewBox={`0 0 ${NOTE_SIZE} ${NOTE_SIZE}`} style={{ position: 'absolute', top: 0, left: 0 }}>
                 <path d={bodyPath} fill={colors.bg} />
@@ -74,17 +78,67 @@ function StickyNoteOverlay({ note }: { note: Note }) {
     );
 }
 
-export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, onClick, onContextMenu, onDrop, onDragStart, onDragEnd, activeFolderId, height, onToggleSelection, note }: FileCardProps) {
+const NOTE_COLOR_ORDER = ['yellow', 'pink', 'blue', 'green'] as const;
+
+function NoteEditor({ note, onSave }: { note: Note | null; onSave: (text: string, color: string) => void }) {
+    const [text, setText] = useState(note?.text ?? '');
+    const [color, setColor] = useState(note?.color ?? 'yellow');
+    const bgColor = NOTE_COLORS[color]?.bg ?? NOTE_COLORS.yellow.bg;
+
+    return (
+        <div
+            style={{
+                position: 'absolute', bottom: -8, right: -8,
+                width: 120, height: 145, zIndex: 20,
+                background: bgColor,
+                border: '2px solid #4F46E5',
+                borderRadius: 4,
+                padding: 6,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                display: 'flex', flexDirection: 'column', gap: 6,
+            }}
+            onClick={(e) => e.stopPropagation()}
+        >
+            <textarea
+                autoFocus
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onBlur={() => onSave(text, color)}
+                style={{
+                    flex: 1,
+                    background: 'transparent', border: 'none', outline: 'none', resize: 'none',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '10px', lineHeight: '1.4', color: '#1A1A1A', padding: 0,
+                }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, flexShrink: 0 }}>
+                {NOTE_COLOR_ORDER.map((c) => (
+                    <button
+                        key={c}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => setColor(c)}
+                        style={{
+                            width: 16, height: 16, borderRadius: '50%',
+                            background: NOTE_COLORS[c].bg,
+                            border: '1px solid #E5DFD3',
+                            outline: color === c ? '2px solid #4F46E5' : 'none',
+                            outlineOffset: '1px',
+                            cursor: 'pointer', padding: 0, flexShrink: 0,
+                        }}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, onClick, onContextMenu, onDrop, onDragStart, onDragEnd, activeFolderId, height, onToggleSelection, note, editingFileId, onStartEditNote, onSaveNote }: FileCardProps) {
     const isFolder = file.type === 'folder';
     const [isDragOver, setIsDragOver] = useState(false);
     const [thumbnail, setThumbnail] = useState<string | null>(null);
     const [thumbnailLoading, setThumbnailLoading] = useState(false);
 
-    useEffect(() => {
-        if (note) {
-            console.log(`[Brainboard] Note for file ${file.id} ("${file.name}"):`, note);
-        }
-    }, [note, file.id, file.name]);
+    useEffect(() => { console.log('[ID]', file.id, file.name); }, [file.id, file.name]);
 
     // Lazy load thumbnail for image files
     useEffect(() => {
@@ -196,6 +250,19 @@ export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, on
 
                 {/* Quick actions on hover */}
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+                    {!note && editingFileId !== file.id && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onStartEditNote?.(file.id); }}
+                            className="w-6 h-6 bg-white rounded border-2 border-brand-primary flex items-center justify-center hover:bg-brand-primary/10"
+                            title="Add note"
+                        >
+                            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                                <rect x="0.75" y="0.75" width="7.5" height="9.5" rx="1" stroke="#4F46E5" strokeWidth="1.5"/>
+                                <line x1="2.5" y1="3.5" x2="6.5" y2="3.5" stroke="#4F46E5" strokeWidth="1.25" strokeLinecap="round"/>
+                                <line x1="2.5" y1="6" x2="5.5" y2="6" stroke="#4F46E5" strokeWidth="1.25" strokeLinecap="round"/>
+                            </svg>
+                        </button>
+                    )}
                     <button onClick={(e) => { e.stopPropagation(); if (onPreview) onPreview() }} className="file-action-btn p-1 bg-black/50 rounded-full hover:bg-brand-primary hover:text-white text-white/70" title="Preview">
                         <Eye className="w-3 h-3" />
                     </button>
@@ -208,7 +275,10 @@ export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, on
                 </div>
             </motion.div>
 
-            {note && <StickyNoteOverlay note={note} />}
+            {editingFileId === file.id
+                ? <NoteEditor note={note ?? null} onSave={(text, color) => onSaveNote?.(file.id, text, color)} />
+                : note && <StickyNoteOverlay note={note} onClick={() => onStartEditNote?.(file.id)} />
+            }
         </div>
     )
 }

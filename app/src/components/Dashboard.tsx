@@ -27,6 +27,7 @@ import { useFileUpload } from '../hooks/useFileUpload';
 import { useFileDownload } from '../hooks/useFileDownload';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useNotes } from '../hooks/useNotes';
+import { upsertNote, deleteNote } from '../lib/notes';
 
 export function Dashboard({ onLogout }: { onLogout: () => void }) {
     const queryClient = useQueryClient();
@@ -38,7 +39,32 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
     } = useTelegramConnection(onLogout);
 
     const { notes, setNotes } = useNotes();
+    const [editingFileId, setEditingFileId] = useState<number | null>(null);
 
+    const handleStartEditNote = useCallback((fileId: number) => {
+        setEditingFileId(fileId);
+    }, []);
+
+    const handleSaveNote = useCallback(async (fileId: number, text: string, color: string) => {
+        const key = String(fileId);
+        const trimmed = text.trim();
+        if (trimmed === '') {
+            await deleteNote(key);
+            setNotes(prev => {
+                const next = { ...prev };
+                delete next[key];
+                return next;
+            });
+        } else {
+            await upsertNote(key, trimmed, color);
+            const now = Date.now();
+            setNotes(prev => ({
+                ...prev,
+                [key]: { text: trimmed, color, createdAt: prev[key]?.createdAt ?? now, updatedAt: now },
+            }));
+        }
+        setEditingFileId(null);
+    }, [setNotes]);
 
     const [previewFile, setPreviewFile] = useState<TelegramFile | null>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -436,6 +462,9 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                     activeFolderId={activeFolderId}
                     notes={notes}
                     setNotes={setNotes}
+                    editingFileId={editingFileId}
+                    onStartEditNote={handleStartEditNote}
+                    onSaveNote={handleSaveNote}
                     onFileClick={handleFileClick}
                     onDelete={handleDelete}
                     onDownload={(id, name) => queueDownload(id, name, activeFolderId)}
