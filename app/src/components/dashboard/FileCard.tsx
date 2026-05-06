@@ -44,7 +44,7 @@ const NOTE_COLORS: Record<string, { bg: string; fold: string }> = {
 const NOTE_SIZE = 80;
 const FOLD = 18;
 
-function StickyNoteOverlay({ note, onClick }: { note: Note; onClick: () => void }) {
+export function StickyNoteOverlay({ note, onClick }: { note: Note; onClick: () => void }) {
     const colors = NOTE_COLORS[note.color] ?? NOTE_COLORS.yellow;
     const bodyPath = `M0,0 L${NOTE_SIZE},0 L${NOTE_SIZE},${NOTE_SIZE - FOLD} L${NOTE_SIZE - FOLD},${NOTE_SIZE} L0,${NOTE_SIZE} Z`;
     const foldPath = `M${NOTE_SIZE},${NOTE_SIZE - FOLD} L${NOTE_SIZE - FOLD},${NOTE_SIZE} L${NOTE_SIZE},${NOTE_SIZE} Z`;
@@ -81,7 +81,7 @@ function StickyNoteOverlay({ note, onClick }: { note: Note; onClick: () => void 
 
 const NOTE_COLOR_ORDER = ['yellow', 'pink', 'blue', 'green'] as const;
 
-function NoteEditor({ note, onSave, onCancel }: {
+export function NoteEditor({ note, onSave, onCancel }: {
     note: Note | null;
     onSave: (text: string, color: string) => void;
     onCancel?: () => void;

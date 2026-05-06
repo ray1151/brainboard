@@ -20,6 +20,8 @@ import { DragDropOverlay } from './dashboard/DragDropOverlay';
 import { ExternalDropBlocker } from './dashboard/ExternalDropBlocker';
 import { PdfViewer } from './dashboard/PdfViewer';
 
+import { LinksView } from './links/LinksView';
+
 // Hooks
 import { useTelegramConnection } from '../hooks/useTelegramConnection';
 import { useFileOperations } from '../hooks/useFileOperations';
@@ -27,6 +29,7 @@ import { useFileUpload } from '../hooks/useFileUpload';
 import { useFileDownload } from '../hooks/useFileDownload';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useNotes } from '../hooks/useNotes';
+import { useLinks } from '../hooks/useLinks';
 import { upsertNote, deleteNote } from '../lib/notes';
 
 export function Dashboard({ onLogout }: { onLogout: () => void }) {
@@ -39,6 +42,8 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
     } = useTelegramConnection(onLogout);
 
     const { notes, setNotes } = useNotes();
+    const { links, setLinks } = useLinks();
+    const [activeSection, setActiveSection] = useState<'files' | 'links'>('files');
     const [editingFileId, setEditingFileId] = useState<number | null>(null);
 
     const handleStartEditNote = useCallback((fileId: number) => {
@@ -424,7 +429,9 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
             <Sidebar
                 folders={folders}
                 activeFolderId={activeFolderId}
-                setActiveFolderId={setActiveFolderId}
+                setActiveFolderId={(id) => { setActiveFolderId(id); setActiveSection('files'); }}
+                isLinksActive={activeSection === 'links'}
+                onSelectLinks={() => setActiveSection('links')}
                 onDrop={handleDropOnFolder}
                 onDelete={handleFolderDelete}
                 onCreate={handleCreateFolder}
@@ -437,17 +444,26 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
 
             <main className="flex-1 flex flex-col" onClick={(e) => { if (e.target === e.currentTarget) setSelectedIds([]); }}>
                 <TopBar
-                    currentFolderName={currentFolderName}
-                    selectedIds={selectedIds}
+                    currentFolderName={activeSection === 'links' ? 'Links' : currentFolderName}
+                    selectedIds={activeSection === 'links' ? [] : selectedIds}
                     onShowMoveModal={() => setShowMoveModal(true)}
                     onBulkDownload={handleBulkDownload}
                     onBulkDelete={handleBulkDelete}
                     onDownloadFolder={handleDownloadFolder}
                     viewMode={viewMode}
                     setViewMode={setViewMode}
-                    searchTerm={searchTerm}
-                    onSearchChange={setSearchTerm}
+                    searchTerm={activeSection === 'links' ? '' : searchTerm}
+                    onSearchChange={activeSection === 'links' ? () => {} : setSearchTerm}
                 />
+                {activeSection === 'links' ? (
+                    <LinksView
+                        links={links}
+                        setLinks={setLinks}
+                        notes={notes}
+                        setNotes={setNotes}
+                    />
+                ) : (
+                <>
                 {searchTerm.length > 2 && (
                     <div className="px-6 pt-4 pb-0">
                         <h2 className="text-sm font-medium text-brand-subtext">
@@ -479,6 +495,8 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                     onDragStart={(fileId) => setInternalDragFileId(fileId)}
                     onDragEnd={() => setTimeout(() => setInternalDragFileId(null), 50)}
                 />
+                </>
+                )}
             </main>
 
             {previewFile && (

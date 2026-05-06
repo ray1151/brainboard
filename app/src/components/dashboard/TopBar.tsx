@@ -1,5 +1,4 @@
-import { HardDrive, LayoutGrid, Sun, Moon, FlaskConical } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
+import { HardDrive, LayoutGrid, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 interface TopBarProps {
@@ -51,29 +50,7 @@ export function TopBar({
                     </div>
                 )}
 
-                {/* TEMP: Phase 4A test — remove after verification */}
-                <button
-                    onClick={async () => {
-                        const tests = [
-                            'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                            'https://www.theverge.com/2024/1/11/24034828/nintendo-switch-2-announcement',
-                        ];
-                        for (const url of tests) {
-                            try {
-                                const result = await invoke('cmd_fetch_link_preview', { url });
-                                console.log('[4B] result:', result);
-                            } catch (e) {
-                                console.error('[4B] error for', url, ':', e);
-                            }
-                        }
-                    }}
-                    className="p-2 hover:bg-brand-hover rounded-md text-brand-subtext hover:text-brand-text transition relative group"
-                    title="[DEV] Test YouTube oEmbed"
-                >
-                    <FlaskConical className="w-5 h-5" />
-                </button>
-
-                <button onClick={onDownloadFolder} className="p-2 hover:bg-brand-hover rounded-md text-brand-subtext hover:text-brand-text transition group relative" title="Download Folder">
+<button onClick={onDownloadFolder} className="p-2 hover:bg-brand-hover rounded-md text-brand-subtext hover:text-brand-text transition group relative" title="Download Folder">
                     <HardDrive className="w-5 h-5" />
                     <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-brand-surface border border-brand-border px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
                         Download All Files

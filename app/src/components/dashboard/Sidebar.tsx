@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HardDrive, Folder, Plus, RefreshCw, LogOut } from 'lucide-react';
+import { HardDrive, Folder, Plus, RefreshCw, LogOut, Link2 } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
 import { BandwidthWidget } from './BandwidthWidget';
 import { TelegramFolder, BandwidthStats } from '../../types';
@@ -8,6 +8,8 @@ interface SidebarProps {
     folders: TelegramFolder[];
     activeFolderId: number | null;
     setActiveFolderId: (id: number | null) => void;
+    isLinksActive: boolean;
+    onSelectLinks: () => void;
     onDrop: (e: React.DragEvent, folderId: number | null) => void;
     onDelete: (id: number, name: string) => void;
     onCreate: (name: string) => Promise<void>;
@@ -19,8 +21,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-    folders, activeFolderId, setActiveFolderId, onDrop, onDelete, onCreate,
-    isSyncing, isConnected, onSync, onLogout, bandwidth
+    folders, activeFolderId, setActiveFolderId, isLinksActive, onSelectLinks,
+    onDrop, onDelete, onCreate, isSyncing, isConnected, onSync, onLogout, bandwidth
 }: SidebarProps) {
     const [showNewFolderInput, setShowNewFolderInput] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
@@ -48,9 +50,17 @@ export function Sidebar({
                 <SidebarItem
                     icon={HardDrive}
                     label="Saved Messages"
-                    active={activeFolderId === null}
+                    active={!isLinksActive && activeFolderId === null}
                     onClick={() => setActiveFolderId(null)}
                     onDrop={(e: React.DragEvent) => onDrop(e, null)}
+                    folderId={null}
+                />
+                <SidebarItem
+                    icon={Link2}
+                    label="Links"
+                    active={isLinksActive}
+                    onClick={onSelectLinks}
+                    onDrop={() => {}}
                     folderId={null}
                 />
                 {folders.map(folder => (
