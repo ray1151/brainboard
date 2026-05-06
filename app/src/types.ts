@@ -2,10 +2,15 @@ export interface TelegramFile {
     id: number;
     name: string;
     size: number;
-    sizeStr: string; // Formatted size
+    sizeStr: string;
     created_at?: string;
-    type?: 'folder' | 'file'; // implied icon_type
-    // Add other fields if backend sends them
+    type?: 'folder' | 'file';
+    url?: string;
+    caption?: string;
+    og_title?: string;
+    og_description?: string;
+    og_site_name?: string;
+    has_telegram_thumb?: boolean;
 }
 
 export interface TelegramFolder {

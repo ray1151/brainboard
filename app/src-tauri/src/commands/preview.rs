@@ -1,6 +1,7 @@
 use tauri::State;
 use tauri::Manager;
-use grammers_client::types::Media;
+use grammers_client::types::{Media, Photo};
+use grammers_tl_types as tl;
 use base64::{Engine as _, engine::general_purpose};
 use crate::TelegramState;
 use crate::bandwidth::BandwidthManager;
@@ -264,6 +265,68 @@ pub async fn cmd_get_thumbnail(
                         };
                         let b64 = general_purpose::STANDARD.encode(&bytes);
                         return Ok(format!("data:{};base64,{}", mime, b64));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok("".to_string())
+}
+
+/// Download the Telegram-pre-fetched thumbnail photo from a WebPage message.
+/// Returns a base64 data URI, or empty string if unavailable.
+#[tauri::command]
+pub async fn cmd_get_link_thumbnail(
+    message_id: i32,
+    folder_id: Option<i64>,
+    app_handle: tauri::AppHandle,
+    state: State<'_, TelegramState>,
+) -> Result<String, String> {
+    let cache_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e: tauri::Error| e.to_string())?
+        .join("link_thumbs");
+    if !cache_dir.exists() {
+        let _ = std::fs::create_dir_all(&cache_dir);
+    }
+
+    let cache_file = cache_dir.join(format!("{}.jpg", message_id));
+    if cache_file.exists() {
+        if let Ok(bytes) = std::fs::read(&cache_file) {
+            let b64 = general_purpose::STANDARD.encode(&bytes);
+            return Ok(format!("data:image/jpeg;base64,{}", b64));
+        }
+    }
+
+    let client_opt = { state.client.lock().await.clone() };
+    if client_opt.is_none() {
+        return Ok("".to_string());
+    }
+    let client = client_opt.unwrap();
+
+    let peer = resolve_peer(&client, folder_id, &state.peer_cache).await?;
+    let messages = client.get_messages_by_id(&peer, &[message_id])
+        .await.map_err(|e| e.to_string())?;
+
+    if let Some(m) = messages.into_iter().flatten().next() {
+        if let Some(Media::WebPage(wp)) = m.media() {
+            if let tl::enums::WebPage::Page(page) = wp.raw.webpage {
+                if let Some(raw_photo) = page.photo {
+                    let photo_media = Media::Photo(Photo::from_raw_media(
+                        tl::types::MessageMediaPhoto {
+                            spoiler: false,
+                            photo: Some(raw_photo),
+                            ttl_seconds: None,
+                        }
+                    ));
+                    let save_path_str = cache_file.to_string_lossy().to_string();
+                    if client.download_media(&photo_media, &save_path_str).await.is_ok() {
+                        if let Ok(bytes) = std::fs::read(&cache_file) {
+                            let b64 = general_purpose::STANDARD.encode(&bytes);
+                            return Ok(format!("data:image/jpeg;base64,{}", b64));
+                        }
                     }
                 }
             }

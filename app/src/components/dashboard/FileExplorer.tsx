@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { FileCard } from './FileCard';
+import { LinkCard } from '../links/LinkCard';
 import { EmptyState } from './EmptyState';
 import { TelegramFile } from '../../types';
 import { ContextMenu } from './ContextMenu';
@@ -247,6 +248,23 @@ export function FileExplorer({
                                             );
                                         }
                                         const file = item;
+                                        const fileNote = notes[String(file.id)] ?? null;
+                                        if (file.url) {
+                                            return (
+                                                <LinkCard
+                                                    key={file.id}
+                                                    file={file}
+                                                    activeFolderId={activeFolderId}
+                                                    height={cardHeight}
+                                                    onDelete={() => onDelete(file.id)}
+                                                    note={fileNote}
+                                                    editingFileId={editingFileId}
+                                                    onStartEditNote={onStartEditNote}
+                                                    onSaveNote={onSaveNote}
+                                                    onCancelNote={onCancelNote}
+                                                />
+                                            );
+                                        }
                                         return (
                                             <FileCard
                                                 key={file.id}
@@ -263,7 +281,7 @@ export function FileExplorer({
                                                 activeFolderId={activeFolderId}
                                                 height={cardHeight}
                                                 onToggleSelection={() => onToggleSelection(file.id)}
-                                                note={notes[String(file.id)] ?? null}
+                                                note={fileNote}
                                                 setNotes={setNotes}
                                                 editingFileId={editingFileId}
                                                 onStartEditNote={onStartEditNote}

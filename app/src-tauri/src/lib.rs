@@ -109,6 +109,7 @@ pub fn run() {
             commands::cmd_get_stream_info,
             commands::cmd_fetch_youtube_preview,
             commands::cmd_fetch_link_preview,
+            commands::cmd_get_link_thumbnail,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
