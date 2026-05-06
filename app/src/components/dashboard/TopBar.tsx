@@ -54,12 +54,17 @@ export function TopBar({
                 {/* TEMP: Phase 4A test — remove after verification */}
                 <button
                     onClick={async () => {
-                        const url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-                        try {
-                            const result = await invoke('cmd_fetch_youtube_preview', { url });
-                            console.log('[4A] result:', result);
-                        } catch (e) {
-                            console.error('[4A] error:', e);
+                        const tests = [
+                            'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                            'https://www.theverge.com/2024/1/11/24034828/nintendo-switch-2-announcement',
+                        ];
+                        for (const url of tests) {
+                            try {
+                                const result = await invoke('cmd_fetch_link_preview', { url });
+                                console.log('[4B] result:', result);
+                            } catch (e) {
+                                console.error('[4B] error for', url, ':', e);
+                            }
                         }
                     }}
                     className="p-2 hover:bg-brand-hover rounded-md text-brand-subtext hover:text-brand-text transition relative group"
