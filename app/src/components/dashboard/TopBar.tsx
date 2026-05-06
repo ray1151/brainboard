@@ -1,4 +1,5 @@
-import { HardDrive, LayoutGrid, Sun, Moon } from 'lucide-react';
+import { HardDrive, LayoutGrid, Sun, Moon, FlaskConical } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { useTheme } from '../../context/ThemeContext';
 
 interface TopBarProps {
@@ -49,6 +50,23 @@ export function TopBar({
                         <button onClick={onBulkDelete} className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-md text-xs transition">Delete</button>
                     </div>
                 )}
+
+                {/* TEMP: Phase 4A test — remove after verification */}
+                <button
+                    onClick={async () => {
+                        const url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+                        try {
+                            const result = await invoke('cmd_fetch_youtube_preview', { url });
+                            console.log('[4A] result:', result);
+                        } catch (e) {
+                            console.error('[4A] error:', e);
+                        }
+                    }}
+                    className="p-2 hover:bg-brand-hover rounded-md text-brand-subtext hover:text-brand-text transition relative group"
+                    title="[DEV] Test YouTube oEmbed"
+                >
+                    <FlaskConical className="w-5 h-5" />
+                </button>
 
                 <button onClick={onDownloadFolder} className="p-2 hover:bg-brand-hover rounded-md text-brand-subtext hover:text-brand-text transition group relative" title="Download Folder">
                     <HardDrive className="w-5 h-5" />
