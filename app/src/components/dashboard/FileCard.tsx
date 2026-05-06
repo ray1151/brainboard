@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Folder, Eye, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { TelegramFile } from '../../types';
@@ -25,6 +25,7 @@ interface FileCardProps {
     editingFileId?: number | null;
     onStartEditNote?: (id: number) => void;
     onSaveNote?: (id: number, text: string, color: string) => void;
+    onCancelNote?: () => void;
 }
 
 // Check if file is an image type that can have a thumbnail
@@ -80,10 +81,41 @@ function StickyNoteOverlay({ note, onClick }: { note: Note; onClick: () => void 
 
 const NOTE_COLOR_ORDER = ['yellow', 'pink', 'blue', 'green'] as const;
 
-function NoteEditor({ note, onSave }: { note: Note | null; onSave: (text: string, color: string) => void }) {
+function NoteEditor({ note, onSave, onCancel }: {
+    note: Note | null;
+    onSave: (text: string, color: string) => void;
+    onCancel?: () => void;
+}) {
     const [text, setText] = useState(note?.text ?? '');
     const [color, setColor] = useState(note?.color ?? 'yellow');
     const bgColor = NOTE_COLORS[color]?.bg ?? NOTE_COLORS.yellow.bg;
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const isCancelling = useRef(false);
+    const textRef = useRef(text);
+    const colorRef = useRef(color);
+    const onSaveRef = useRef(onSave);
+    const onCancelRef = useRef(onCancel);
+    textRef.current = text;
+    colorRef.current = color;
+    onSaveRef.current = onSave;
+    onCancelRef.current = onCancel;
+
+    useEffect(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                isCancelling.current = true;
+                el.blur();
+            } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                onSaveRef.current(textRef.current, colorRef.current);
+            }
+        };
+        el.addEventListener('keydown', handleKeyDown);
+        return () => el.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     return (
         <div
@@ -100,10 +132,18 @@ function NoteEditor({ note, onSave }: { note: Note | null; onSave: (text: string
             onClick={(e) => e.stopPropagation()}
         >
             <textarea
+                ref={textareaRef}
                 autoFocus
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                onBlur={() => onSave(text, color)}
+                onBlur={() => {
+                    if (isCancelling.current) {
+                        isCancelling.current = false;
+                        onCancelRef.current?.();
+                    } else {
+                        onSaveRef.current(textRef.current, colorRef.current);
+                    }
+                }}
                 style={{
                     flex: 1,
                     background: 'transparent', border: 'none', outline: 'none', resize: 'none',
@@ -132,7 +172,7 @@ function NoteEditor({ note, onSave }: { note: Note | null; onSave: (text: string
     );
 }
 
-export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, onClick, onContextMenu, onDrop, onDragStart, onDragEnd, activeFolderId, height, onToggleSelection, note, editingFileId, onStartEditNote, onSaveNote }: FileCardProps) {
+export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, onClick, onContextMenu, onDrop, onDragStart, onDragEnd, activeFolderId, height, onToggleSelection, note, editingFileId, onStartEditNote, onSaveNote, onCancelNote }: FileCardProps) {
     const isFolder = file.type === 'folder';
     const [isDragOver, setIsDragOver] = useState(false);
     const [thumbnail, setThumbnail] = useState<string | null>(null);
@@ -276,7 +316,7 @@ export function FileCard({ file, onDelete, onDownload, onPreview, isSelected, on
             </motion.div>
 
             {editingFileId === file.id
-                ? <NoteEditor note={note ?? null} onSave={(text, color) => onSaveNote?.(file.id, text, color)} />
+                ? <NoteEditor note={note ?? null} onSave={(text, color) => onSaveNote?.(file.id, text, color)} onCancel={onCancelNote} />
                 : note && <StickyNoteOverlay note={note} onClick={() => onStartEditNote?.(file.id)} />
             }
         </div>

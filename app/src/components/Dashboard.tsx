@@ -45,6 +45,8 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
         setEditingFileId(fileId);
     }, []);
 
+    const handleCancelNote = useCallback(() => setEditingFileId(null), []);
+
     const handleSaveNote = useCallback(async (fileId: number, text: string, color: string) => {
         const key = String(fileId);
         const trimmed = text.trim();
@@ -465,6 +467,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                     editingFileId={editingFileId}
                     onStartEditNote={handleStartEditNote}
                     onSaveNote={handleSaveNote}
+                    onCancelNote={handleCancelNote}
                     onFileClick={handleFileClick}
                     onDelete={handleDelete}
                     onDownload={(id, name) => queueDownload(id, name, activeFolderId)}

@@ -23,6 +23,7 @@ interface FileExplorerProps {
     editingFileId: number | null;
     onStartEditNote: (id: number) => void;
     onSaveNote: (id: number, text: string, color: string) => void;
+    onCancelNote: () => void;
     onFileClick: (e: React.MouseEvent, id: number) => void;
     onDelete: (id: number) => void;
     onDownload: (id: number, name: string) => void;
@@ -64,7 +65,7 @@ function useGridColumns(containerRef: React.RefObject<HTMLDivElement | null>) {
 
 export function FileExplorer({
     files, loading, error, viewMode, selectedIds, activeFolderId, notes, setNotes,
-    editingFileId, onStartEditNote, onSaveNote,
+    editingFileId, onStartEditNote, onSaveNote, onCancelNote,
     onFileClick, onDelete, onDownload, onPreview, onManualUpload, onSelectionClear, onToggleSelection, onDrop, onDragStart, onDragEnd
 }: FileExplorerProps) {
     const [sortField, setSortField] = useState<SortField>('name');
@@ -267,6 +268,7 @@ export function FileExplorer({
                                                 editingFileId={editingFileId}
                                                 onStartEditNote={onStartEditNote}
                                                 onSaveNote={onSaveNote}
+                                                onCancelNote={onCancelNote}
                                             />
                                         );
                                     })}
