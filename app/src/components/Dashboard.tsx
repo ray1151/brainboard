@@ -43,7 +43,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
 
     const { notes, setNotes } = useNotes();
     const { links, setLinks } = useLinks();
-    const [activeSection, setActiveSection] = useState<'files' | 'links'>('files');
+    const [activeSection, setActiveSection] = useState<'files' | 'links' | 'all-files' | 'all-links'>('files');
     const [editingFileId, setEditingFileId] = useState<number | null>(null);
 
     const handleStartEditNote = useCallback((fileId: number) => {
@@ -52,8 +52,8 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
 
     const handleCancelNote = useCallback(() => setEditingFileId(null), []);
 
-    const handleSaveNote = useCallback(async (fileId: number, text: string, color: string) => {
-        const key = String(fileId);
+    const handleSaveNote = useCallback(async (fileId: number, text: string, color: string, noteId?: string) => {
+        const key = noteId ?? String(fileId);
         const trimmed = text.trim();
         if (trimmed === '') {
             await deleteNote(key);
@@ -116,6 +116,19 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
         }))),
         enabled: !!store,
     });
+
+    const { data: allContentRaw = [], isLoading: allContentLoading } = useQuery({
+        queryKey: ['all-content'],
+        queryFn: () => invoke<any[]>('cmd_get_all_files').then(res => res.map(f => ({
+            ...f,
+            sizeStr: formatBytes(f.size),
+            type: f.icon_type === 'link' ? 'file' : (f.icon_type || 'file'),
+        }))),
+        enabled: !!store && (activeSection === 'all-files' || activeSection === 'all-links'),
+    });
+
+    const allFilesContent = allContentRaw.filter((f: TelegramFile) => f.icon_type !== 'link');
+    const allLinksContent = allContentRaw.filter((f: TelegramFile) => f.icon_type === 'link');
 
     const displayedFiles = searchTerm.length > 2
         ? searchResults
@@ -432,6 +445,10 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                 setActiveFolderId={(id) => { setActiveFolderId(id); setActiveSection('files'); }}
                 isLinksActive={activeSection === 'links'}
                 onSelectLinks={() => setActiveSection('links')}
+                isAllFilesActive={activeSection === 'all-files'}
+                isAllLinksActive={activeSection === 'all-links'}
+                onSelectAllFiles={() => setActiveSection('all-files')}
+                onSelectAllLinks={() => setActiveSection('all-links')}
                 onDrop={handleDropOnFolder}
                 onDelete={handleFolderDelete}
                 onCreate={handleCreateFolder}
@@ -444,16 +461,21 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
 
             <main className="flex-1 flex flex-col" onClick={(e) => { if (e.target === e.currentTarget) setSelectedIds([]); }}>
                 <TopBar
-                    currentFolderName={activeSection === 'links' ? 'Links' : currentFolderName}
-                    selectedIds={activeSection === 'links' ? [] : selectedIds}
+                    currentFolderName={
+                        activeSection === 'links' ? 'Links' :
+                        activeSection === 'all-files' ? 'All Files' :
+                        activeSection === 'all-links' ? 'All Links' :
+                        currentFolderName
+                    }
+                    selectedIds={activeSection === 'links' || activeSection === 'all-files' || activeSection === 'all-links' ? [] : selectedIds}
                     onShowMoveModal={() => setShowMoveModal(true)}
                     onBulkDownload={handleBulkDownload}
                     onBulkDelete={handleBulkDelete}
                     onDownloadFolder={handleDownloadFolder}
                     viewMode={viewMode}
                     setViewMode={setViewMode}
-                    searchTerm={activeSection === 'links' ? '' : searchTerm}
-                    onSearchChange={activeSection === 'links' ? () => {} : setSearchTerm}
+                    searchTerm={activeSection === 'files' ? searchTerm : ''}
+                    onSearchChange={activeSection === 'files' ? setSearchTerm : () => {}}
                 />
                 {activeSection === 'links' ? (
                     <LinksView
@@ -461,6 +483,50 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                         setLinks={setLinks}
                         notes={notes}
                         setNotes={setNotes}
+                    />
+                ) : activeSection === 'all-files' ? (
+                    <FileExplorer
+                        files={allFilesContent}
+                        loading={allContentLoading}
+                        error={null}
+                        viewMode={viewMode}
+                        selectedIds={[]}
+                        activeFolderId={null}
+                        notes={notes}
+                        setNotes={setNotes}
+                        editingFileId={editingFileId}
+                        onStartEditNote={handleStartEditNote}
+                        onSaveNote={handleSaveNote}
+                        onCancelNote={handleCancelNote}
+                        onFileClick={() => {}}
+                        onDelete={handleDelete}
+                        onDownload={(id, name) => queueDownload(id, name, null)}
+                        onPreview={handlePreview}
+                        onManualUpload={handleManualUpload}
+                        onSelectionClear={() => {}}
+                        onToggleSelection={() => {}}
+                    />
+                ) : activeSection === 'all-links' ? (
+                    <FileExplorer
+                        files={allLinksContent}
+                        loading={allContentLoading}
+                        error={null}
+                        viewMode={viewMode}
+                        selectedIds={[]}
+                        activeFolderId={null}
+                        notes={notes}
+                        setNotes={setNotes}
+                        editingFileId={editingFileId}
+                        onStartEditNote={handleStartEditNote}
+                        onSaveNote={handleSaveNote}
+                        onCancelNote={handleCancelNote}
+                        onFileClick={() => {}}
+                        onDelete={handleDelete}
+                        onDownload={(id, name) => queueDownload(id, name, null)}
+                        onPreview={handlePreview}
+                        onManualUpload={handleManualUpload}
+                        onSelectionClear={() => {}}
+                        onToggleSelection={() => {}}
                     />
                 ) : (
                 <>

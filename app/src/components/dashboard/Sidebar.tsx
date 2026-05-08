@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HardDrive, Folder, Plus, RefreshCw, LogOut, Link2 } from 'lucide-react';
+import { HardDrive, Folder, Plus, RefreshCw, LogOut, Link2, LayoutGrid, Globe } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
 import { BandwidthWidget } from './BandwidthWidget';
 import { TelegramFolder, BandwidthStats } from '../../types';
@@ -10,6 +10,10 @@ interface SidebarProps {
     setActiveFolderId: (id: number | null) => void;
     isLinksActive: boolean;
     onSelectLinks: () => void;
+    isAllFilesActive: boolean;
+    isAllLinksActive: boolean;
+    onSelectAllFiles: () => void;
+    onSelectAllLinks: () => void;
     onDrop: (e: React.DragEvent, folderId: number | null) => void;
     onDelete: (id: number, name: string) => void;
     onCreate: (name: string) => Promise<void>;
@@ -22,6 +26,7 @@ interface SidebarProps {
 
 export function Sidebar({
     folders, activeFolderId, setActiveFolderId, isLinksActive, onSelectLinks,
+    isAllFilesActive, isAllLinksActive, onSelectAllFiles, onSelectAllLinks,
     onDrop, onDelete, onCreate, isSyncing, isConnected, onSync, onLogout, bandwidth
 }: SidebarProps) {
     const [showNewFolderInput, setShowNewFolderInput] = useState(false);
@@ -46,11 +51,36 @@ export function Sidebar({
             </div>
 
             {/* Scrollable folder list */}
-            <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto min-h-0">
+            <nav className="flex-1 px-2 py-4 overflow-y-auto min-h-0">
+                {/* Aggregate views */}
+                <div className="space-y-1">
+                    <SidebarItem
+                        icon={LayoutGrid}
+                        label="All Files"
+                        active={isAllFilesActive}
+                        onClick={onSelectAllFiles}
+                        onDrop={() => {}}
+                        folderId={null}
+                    />
+                    <SidebarItem
+                        icon={Globe}
+                        label="All Links"
+                        active={isAllLinksActive}
+                        onClick={onSelectAllLinks}
+                        onDrop={() => {}}
+                        folderId={null}
+                    />
+                </div>
+
+                {/* Separator */}
+                <div className="my-3 border-t border-brand-border/50" />
+
+                {/* Per-folder views */}
+                <div className="space-y-1">
                 <SidebarItem
                     icon={HardDrive}
                     label="Saved Messages"
-                    active={!isLinksActive && activeFolderId === null}
+                    active={!isLinksActive && !isAllFilesActive && !isAllLinksActive && activeFolderId === null}
                     onClick={() => setActiveFolderId(null)}
                     onDrop={(e: React.DragEvent) => onDrop(e, null)}
                     folderId={null}
@@ -75,6 +105,7 @@ export function Sidebar({
                         folderId={folder.id}
                     />
                 ))}
+                </div>
             </nav>
 
             {/* Sticky Create Folder section — always visible above the footer */}

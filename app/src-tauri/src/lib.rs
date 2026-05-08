@@ -89,6 +89,7 @@ pub fn run() {
             commands::cmd_auth_sign_in,
             commands::cmd_auth_check_password,
             commands::cmd_get_files,
+            commands::cmd_get_all_files,
             commands::cmd_upload_file,
             commands::cmd_connect,
             commands::cmd_log,

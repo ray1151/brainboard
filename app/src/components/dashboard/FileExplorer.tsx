@@ -1,13 +1,18 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-shell';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { FileCard } from './FileCard';
+import { FileCard, NoteEditor, NoteEditorHandle } from './FileCard';
 import { LinkCard } from '../links/LinkCard';
 import { EmptyState } from './EmptyState';
+import { FileTypeIcon } from '../FileTypeIcon';
 import { TelegramFile } from '../../types';
 import { ContextMenu } from './ContextMenu';
 import { FileListItem } from './FileListItem';
 import { Note } from '../../lib/notes';
+import { getCachedPreview } from '../../lib/linkCache';
 
 type SortField = 'name' | 'size' | 'date';
 type SortDirection = 'asc' | 'desc';
@@ -23,7 +28,7 @@ interface FileExplorerProps {
     setNotes: React.Dispatch<React.SetStateAction<Record<string, Note>>>;
     editingFileId: number | null;
     onStartEditNote: (id: number) => void;
-    onSaveNote: (id: number, text: string, color: string) => void;
+    onSaveNote: (id: number, text: string, color: string, noteId?: string) => void;
     onCancelNote: () => void;
     onFileClick: (e: React.MouseEvent, id: number) => void;
     onDelete: (id: number) => void;
@@ -37,6 +42,144 @@ interface FileExplorerProps {
     onDragEnd?: () => void;
 }
 
+
+// ── list-view note modal ──────────────────────────────────────────────────────
+
+type LinkType = 'youtube' | 'instagram' | 'twitter' | 'generic';
+
+function detectLinkType(url: string): LinkType {
+    if (/youtube\.com|youtu\.be/i.test(url)) return 'youtube';
+    if (/instagram\.com/i.test(url)) return 'instagram';
+    if (/twitter\.com|x\.com/i.test(url)) return 'twitter';
+    return 'generic';
+}
+
+function ListNoteModal({ file, note, activeFolderId, onSave, onCancel }: {
+    file: TelegramFile;
+    note: Note | null;
+    activeFolderId: number | null;
+    onSave: (text: string, color: string) => void;
+    onCancel: () => void;
+}) {
+    const url = file.url ?? '';
+    const isLink = !!url;
+    const linkType = isLink ? detectLinkType(url) : null;
+    const [thumbSrc, setThumbSrc] = useState<string | null>(null);
+    const [thumbHover, setThumbHover] = useState(false);
+    const editorRef = useRef<NoteEditorHandle>(null);
+
+    useEffect(() => {
+        if (!isLink) return;
+        let cancelled = false;
+        (async () => {
+            if (file.has_telegram_thumb) {
+                try {
+                    const b64 = await invoke<string>('cmd_get_link_thumbnail', {
+                        messageId: file.id, folderId: activeFolderId ?? null,
+                    });
+                    if (!cancelled && b64) { setThumbSrc(b64); return; }
+                } catch { /* fall through */ }
+            }
+            const cached = await getCachedPreview(url);
+            if (!cancelled && cached?.thumbnailUrl) { setThumbSrc(cached.thumbnailUrl); return; }
+            try {
+                const preview = await invoke<{ thumbnail_url: string }>('cmd_fetch_link_preview', { url });
+                if (!cancelled && preview.thumbnail_url) { setThumbSrc(preview.thumbnail_url); return; }
+            } catch { /* fall through */ }
+            if (!cancelled) {
+                try {
+                    const domain = new URL(url).hostname.replace(/^www\./, '');
+                    setThumbSrc(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`);
+                } catch { /* fall through */ }
+            }
+        })();
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [url, file.id, file.has_telegram_thumb, activeFolderId]);
+
+    // 16:9 = 240×135 | 9:16 = 157×280 | square file = 180×180
+    const thumbW = linkType === 'instagram' ? 157 : isLink ? 240 : 180;
+    const thumbH = linkType === 'instagram' ? 280 : isLink ? 135 : 180;
+    const isFavicon = thumbSrc?.startsWith('https://www.google.com/s2/favicons') ?? false;
+    const title = file.og_title || file.name;
+
+    // Use onMouseDown so we fire before any blur event races; e.preventDefault() keeps
+    // textarea focused so NoteEditor's onBlur doesn't fire prematurely.
+    const handleThumbDown = (e: React.MouseEvent) => {
+        if (!isLink) return;
+        e.stopPropagation();
+        e.preventDefault();
+        editorRef.current?.save(); // save current text/color via imperative handle
+        open(url);                 // open in browser
+    };
+
+    const thumbPlaceholderBg = linkType === 'instagram'
+        ? 'linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)'
+        : 'linear-gradient(135deg, #1a1a2e, #2a2520)';
+
+    return (
+        <div
+            style={{ display: 'flex', gap: 16, padding: 16 }}
+            onClick={(e) => e.stopPropagation()}
+        >
+            {/* Thumbnail */}
+            <div
+                onMouseDown={handleThumbDown}
+                onMouseEnter={() => isLink && setThumbHover(true)}
+                onMouseLeave={() => setThumbHover(false)}
+                style={{
+                    width: thumbW, height: thumbH, flexShrink: 0,
+                    borderRadius: 12, overflow: 'hidden',
+                    background: thumbPlaceholderBg,
+                    cursor: isLink ? 'pointer' : 'default',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                    transform: thumbHover ? 'scale(1.02)' : 'scale(1)',
+                    transition: 'transform 0.15s ease',
+                }}
+            >
+                {thumbSrc && !isFavicon ? (
+                    <img
+                        src={thumbSrc}
+                        alt={title}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+                    />
+                ) : isFavicon && thumbSrc ? (
+                    <img src={thumbSrc} alt={title} style={{ width: 40, height: 40, opacity: 0.8, pointerEvents: 'none' }} />
+                ) : (
+                    <FileTypeIcon filename={file.name} className="w-10 h-10 opacity-50" />
+                )}
+            </div>
+
+            {/* Title + editor */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                <p style={{
+                    color: '#FAF8F3',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 12, fontWeight: 500,
+                    maxWidth: 200, margin: 0,
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical' as const,
+                    lineHeight: 1.4,
+                }}>
+                    {title}
+                </p>
+                <NoteEditor
+                    ref={editorRef}
+                    note={note}
+                    onSave={onSave}
+                    onCancel={onCancel}
+                    saveOnEsc
+                    modal
+                />
+            </div>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function useGridColumns(containerRef: React.RefObject<HTMLDivElement | null>) {
     const [columns, setColumns] = useState(4);
@@ -248,7 +391,7 @@ export function FileExplorer({
                                             );
                                         }
                                         const file = item;
-                                        const fileNote = notes[String(file.id)] ?? null;
+                                        const fileNote = notes[file.note_id ?? String(file.id)] ?? null;
                                         if (file.url) {
                                             return (
                                                 <LinkCard
@@ -353,6 +496,8 @@ export function FileExplorer({
                                         onPreview={handlePreviewRequest}
                                         onDownload={onDownload}
                                         onDelete={onDelete}
+                                        note={notes[file.note_id ?? String(file.id)] ?? null}
+                                        onStartEditNote={onStartEditNote}
                                     />
                                 </div>
                             );
@@ -360,6 +505,29 @@ export function FileExplorer({
                     </div>
                 </div>
             )}
+
+            {/* List-view note editor modal — single portal, only one can be open at a time */}
+            {viewMode === 'list' && editingFileId !== null && (() => {
+                const editFile = files.find(f => f.id === editingFileId) ?? null;
+                if (!editFile) return null;
+                const editNote = notes[editFile.note_id ?? String(editingFileId)] ?? null;
+                return createPortal(
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center"
+                        style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+                        onClick={() => (document.activeElement as HTMLElement)?.blur()}
+                    >
+                        <ListNoteModal
+                            file={editFile}
+                            note={editNote}
+                            activeFolderId={activeFolderId}
+                            onSave={(text, color) => onSaveNote(editingFileId, text, color, editFile.note_id)}
+                            onCancel={onCancelNote}
+                        />
+                    </div>,
+                    document.body
+                );
+            })()}
 
             {contextMenu && (
                 <ContextMenu

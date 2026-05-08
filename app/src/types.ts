@@ -11,6 +11,10 @@ export interface TelegramFile {
     og_description?: string;
     og_site_name?: string;
     has_telegram_thumb?: boolean;
+    folder_id?: number | null;
+    folder_name?: string | null;
+    note_id?: string;
+    icon_type?: string;
 }
 
 export interface TelegramFolder {

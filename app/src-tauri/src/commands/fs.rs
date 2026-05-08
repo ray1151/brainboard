@@ -1,5 +1,5 @@
 use tauri::{State, Emitter};
-use grammers_client::types::{Media, Peer};
+use grammers_client::{Client, types::{Media, Peer}};
 use grammers_client::InputMessage;
 use grammers_tl_types as tl;
 use crate::TelegramState;
@@ -310,21 +310,18 @@ pub async fn cmd_move_files(
     Ok(true)
 }
 
-#[tauri::command]
-pub async fn cmd_get_files(
+/// Iterate all messages in `peer` and return them as `FileMetadata`.
+/// Pass `folder_name = Some(name)` for aggregate views — enables composite note keys and source badges.
+/// Pass `folder_name = None` for single-folder views — note_id is just the message ID (backward compat).
+async fn collect_files_from_peer(
+    client: &Client,
     folder_id: Option<i64>,
-    state: State<'_, TelegramState>,
+    peer: &Peer,
+    folder_name: Option<&str>,
 ) -> Result<Vec<FileMetadata>, String> {
-    let client_opt = { state.client.lock().await.clone() };
-    if client_opt.is_none() {
-        return Ok(Vec::new());
-    }
-    let client = client_opt.unwrap();
-    let peer = resolve_peer(&client, folder_id, &state.peer_cache).await?;
-
-    // ── Pass 1: collect all messages into owned structs ───────────────────────
+    // Pass 1: collect all messages into owned structs
     let mut collected: Vec<CollectedMsg> = Vec::new();
-    let mut msgs = client.iter_messages(&peer);
+    let mut msgs = client.iter_messages(peer);
     while let Some(msg) = msgs.next().await.map_err(|e| e.to_string())? {
         let id = msg.id();
         let date_raw = match &msg.raw {
@@ -359,10 +356,10 @@ pub async fn cmd_get_files(
                         has_thumb,
                     }
                 } else {
-                    MsgKind::Skip // WebPage::Pending / Empty / NotModified
+                    MsgKind::Skip
                 }
             },
-            Some(_) => MsgKind::Skip, // sticker, poll, geo, dice, etc.
+            Some(_) => MsgKind::Skip,
             None => {
                 if let Some(url) = extract_first_url(&text, &entities) {
                     MsgKind::Link { url, og_title: None, og_description: None, og_site_name: None, has_thumb: false }
@@ -391,20 +388,27 @@ pub async fn cmd_get_files(
         collected.push(CollectedMsg { id, date_raw, date_str, text, entities, kind, sender });
     }
 
-    // Sort chronologically — Telegram IDs are monotonically increasing
+    // Sort by message ID (monotonic within a single chat)
     collected.sort_by_key(|m| m.id);
 
-    // ── Pass 2: build output ──────────────────────────────────────────────────
+    // Pass 2: build output
+    let folder_name_owned = folder_name.map(|s| s.to_string());
     let mut files: Vec<FileMetadata> = Vec::new();
-
     for msg in &collected {
+        let note_id = if folder_name.is_some() {
+            format!("{}_{}",  folder_id.map_or("saved".to_string(), |f| f.to_string()), msg.id)
+        } else {
+            msg.id.to_string()
+        };
         match &msg.kind {
             MsgKind::File { name, size, mime, ext } => {
                 files.push(FileMetadata {
                     id: msg.id as i64, folder_id,
                     name: name.clone(), size: *size,
                     mime_type: mime.clone(), file_ext: ext.clone(),
-                    created_at: msg.date_str.clone(), icon_type: "file".into(),
+                    created_at: msg.date_str.clone(), date_raw: msg.date_raw,
+                    note_id, folder_name: folder_name_owned.clone(),
+                    icon_type: "file".into(),
                     url: None, caption: None, og_title: None, og_description: None,
                     og_site_name: None, has_telegram_thumb: false,
                 });
@@ -416,7 +420,9 @@ pub async fn cmd_get_files(
                     id: msg.id as i64, folder_id,
                     name: display_name, size: 0,
                     mime_type: None, file_ext: None,
-                    created_at: msg.date_str.clone(), icon_type: "link".into(),
+                    created_at: msg.date_str.clone(), date_raw: msg.date_raw,
+                    note_id, folder_name: folder_name_owned.clone(),
+                    icon_type: "link".into(),
                     url: Some(url), caption: None,
                     og_title: og_title.clone(), og_description: og_description.clone(),
                     og_site_name: og_site_name.clone(), has_telegram_thumb: *has_thumb,
@@ -428,7 +434,9 @@ pub async fn cmd_get_files(
                     id: msg.id as i64, folder_id,
                     name, size: 0,
                     mime_type: None, file_ext: None,
-                    created_at: msg.date_str.clone(), icon_type: "text".into(),
+                    created_at: msg.date_str.clone(), date_raw: msg.date_raw,
+                    note_id, folder_name: folder_name_owned.clone(),
+                    icon_type: "text".into(),
                     url: None, caption: None, og_title: None, og_description: None,
                     og_site_name: None, has_telegram_thumb: false,
                 });
@@ -438,6 +446,66 @@ pub async fn cmd_get_files(
     }
 
     Ok(files)
+}
+
+#[tauri::command]
+pub async fn cmd_get_files(
+    folder_id: Option<i64>,
+    state: State<'_, TelegramState>,
+) -> Result<Vec<FileMetadata>, String> {
+    let client_opt = { state.client.lock().await.clone() };
+    if client_opt.is_none() {
+        return Ok(Vec::new());
+    }
+    let client = client_opt.unwrap();
+    let peer = resolve_peer(&client, folder_id, &state.peer_cache).await?;
+    collect_files_from_peer(&client, folder_id, &peer, None).await
+}
+
+#[tauri::command]
+pub async fn cmd_get_all_files(
+    state: State<'_, TelegramState>,
+) -> Result<Vec<FileMetadata>, String> {
+    let client_opt = { state.client.lock().await.clone() };
+    if client_opt.is_none() {
+        return Ok(Vec::new());
+    }
+    let client = client_opt.unwrap();
+
+    let mut all_files: Vec<FileMetadata> = Vec::new();
+
+    // Saved Messages (folder_id = None)
+    let saved_peer = resolve_peer(&client, None, &state.peer_cache).await?;
+    let mut saved = collect_files_from_peer(&client, None, &saved_peer, Some("Saved Messages")).await?;
+    all_files.append(&mut saved);
+
+    // Collect [TD] channel peers with display names (cap 20)
+    let mut td_peers: Vec<(i64, String, Peer)> = Vec::new();
+    {
+        let mut dialogs = client.iter_dialogs();
+        while let Some(dialog) = dialogs.next().await.map_err(|e| e.to_string())? {
+            if let Peer::Channel(c) = &dialog.peer {
+                if c.raw.title.to_lowercase().contains("[td]") {
+                    let display = c.raw.title
+                        .replace(" [TD]", "").replace(" [td]", "")
+                        .replace("[TD]", "").replace("[td]", "")
+                        .trim().to_string();
+                    td_peers.push((c.raw.id, display, dialog.peer.clone()));
+                    if td_peers.len() >= 20 { break; }
+                }
+            }
+        }
+    }
+
+    for (fid, display_name, peer) in td_peers {
+        let mut folder_files = collect_files_from_peer(&client, Some(fid), &peer, Some(&display_name)).await?;
+        all_files.append(&mut folder_files);
+    }
+
+    // Sort newest first using Unix timestamp
+    all_files.sort_by(|a, b| b.date_raw.cmp(&a.date_raw));
+
+    Ok(all_files)
 }
 
 /// Returns the first HTTP/HTTPS URL found via entity offsets, with bare-text fallback.
@@ -524,7 +592,9 @@ pub async fn cmd_search_global(
                         files.push(FileMetadata {
                             id: m.id as i64, folder_id, name, size,
                             mime_type: Some(mime), file_ext: ext,
-                            created_at: m.date.to_string(), icon_type: "file".into(),
+                            created_at: m.date.to_string(), date_raw: m.date,
+                            note_id: m.id.to_string(), folder_name: None,
+                            icon_type: "file".into(),
                             url: None, caption: None, og_title: None, og_description: None,
                             og_site_name: None, has_telegram_thumb: false,
                         });
@@ -552,7 +622,9 @@ pub async fn cmd_search_global(
                         files.push(FileMetadata {
                             id: m.id as i64, folder_id, name, size,
                             mime_type: Some(mime), file_ext: ext,
-                            created_at: m.date.to_string(), icon_type: "file".into(),
+                            created_at: m.date.to_string(), date_raw: m.date,
+                            note_id: m.id.to_string(), folder_name: None,
+                            icon_type: "file".into(),
                             url: None, caption: None, og_title: None, og_description: None,
                             og_site_name: None, has_telegram_thumb: false,
                         });

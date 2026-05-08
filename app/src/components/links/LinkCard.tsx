@@ -44,7 +44,7 @@ export interface LinkCardProps {
     note?: Note | null;
     editingFileId?: number | null;
     onStartEditNote?: (id: number) => void;
-    onSaveNote?: (id: number, text: string, color: string) => void;
+    onSaveNote?: (id: number, text: string, color: string, noteId?: string) => void;
     onCancelNote?: () => void;
     /** When provided (grid context), use explicit px height instead of the padding-top ratio trick */
     height?: number;
@@ -228,12 +228,29 @@ export function LinkCard({
                     </button>
                 </div>
 
-                {/* Bottom: title + domain */}
+                {/* Bottom: title + domain + optional source badge */}
                 <div className="absolute bottom-0 left-0 right-0 p-2.5 z-10">
                     <p className="text-white text-xs font-medium leading-snug line-clamp-2 drop-shadow">
                         {displayTitle}
                     </p>
-                    <p className="text-white/50 text-[10px] mt-0.5">{domain}</p>
+                    <div className="flex items-center justify-between mt-0.5 gap-1 min-w-0">
+                        <p className="text-white/50 text-[10px] shrink-0">{domain}</p>
+                        {file.folder_name && (
+                            <span
+                                className="truncate"
+                                style={{
+                                    background: '#E5DFD3', color: '#1A1A1A',
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    fontSize: '9px', lineHeight: 1,
+                                    padding: '2px 5px', borderRadius: 999,
+                                    maxWidth: '55%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                    flexShrink: 1,
+                                }}
+                            >
+                                {file.folder_name}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -241,7 +258,7 @@ export function LinkCard({
             {editingFileId === file.id
                 ? <NoteEditor
                     note={note ?? null}
-                    onSave={(text, color) => onSaveNote?.(file.id, text, color)}
+                    onSave={(text, color) => onSaveNote?.(file.id, text, color, file.note_id)}
                     onCancel={onCancelNote}
                   />
                 : note && <StickyNoteOverlay note={note} onClick={() => onStartEditNote?.(file.id)} />
