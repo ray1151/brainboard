@@ -2,7 +2,6 @@ use tauri::{State, Emitter};
 use grammers_client::types::{Media, Peer};
 use grammers_client::InputMessage;
 use grammers_tl_types as tl;
-use std::collections::HashSet;
 use crate::TelegramState;
 use crate::models::{FolderMetadata, FileMetadata};
 use crate::bandwidth::BandwidthManager;
@@ -395,51 +394,41 @@ pub async fn cmd_get_files(
     // Sort chronologically — Telegram IDs are monotonically increasing
     collected.sort_by_key(|m| m.id);
 
-    // ── Pass 2: build output, merging adjacent captions ───────────────────────
+    // ── Pass 2: build output ──────────────────────────────────────────────────
     let mut files: Vec<FileMetadata> = Vec::new();
-    let mut consumed: HashSet<i32> = HashSet::new();
-    let n = collected.len();
 
-    for i in 0..n {
-        if consumed.contains(&collected[i].id) { continue; }
-
-        match &collected[i].kind {
+    for msg in &collected {
+        match &msg.kind {
             MsgKind::File { name, size, mime, ext } => {
                 files.push(FileMetadata {
-                    id: collected[i].id as i64, folder_id,
+                    id: msg.id as i64, folder_id,
                     name: name.clone(), size: *size,
                     mime_type: mime.clone(), file_ext: ext.clone(),
-                    created_at: collected[i].date_str.clone(), icon_type: "file".into(),
+                    created_at: msg.date_str.clone(), icon_type: "file".into(),
                     url: None, caption: None, og_title: None, og_description: None,
                     og_site_name: None, has_telegram_thumb: false,
                 });
             },
             MsgKind::Link { url, og_title, og_description, og_site_name, has_thumb } => {
-                // Extract any caption baked into the same message (Pattern 2)
-                let in_msg_cap = extract_caption_from_text(&collected[i].text, &collected[i].entities);
-                // Merge with adjacent text messages (Patterns 1 & 3)
-                let caption = find_caption(i, &collected, &mut consumed, in_msg_cap);
-
                 let url = url.clone();
                 let display_name = og_title.clone().unwrap_or_else(|| url.clone());
                 files.push(FileMetadata {
-                    id: collected[i].id as i64, folder_id,
+                    id: msg.id as i64, folder_id,
                     name: display_name, size: 0,
                     mime_type: None, file_ext: None,
-                    created_at: collected[i].date_str.clone(), icon_type: "link".into(),
-                    url: Some(url), caption,
+                    created_at: msg.date_str.clone(), icon_type: "link".into(),
+                    url: Some(url), caption: None,
                     og_title: og_title.clone(), og_description: og_description.clone(),
                     og_site_name: og_site_name.clone(), has_telegram_thumb: *has_thumb,
                 });
             },
             MsgKind::TextOnly => {
-                // Buffer it — may be consumed by an adjacent URL; post-filter removes consumed entries
-                let name: String = collected[i].text.chars().take(80).collect();
+                let name: String = msg.text.chars().take(80).collect();
                 files.push(FileMetadata {
-                    id: collected[i].id as i64, folder_id,
+                    id: msg.id as i64, folder_id,
                     name, size: 0,
                     mime_type: None, file_ext: None,
-                    created_at: collected[i].date_str.clone(), icon_type: "text".into(),
+                    created_at: msg.date_str.clone(), icon_type: "text".into(),
                     url: None, caption: None, og_title: None, og_description: None,
                     og_site_name: None, has_telegram_thumb: false,
                 });
@@ -447,9 +436,6 @@ pub async fn cmd_get_files(
             MsgKind::Skip => {},
         }
     }
-
-    // Remove TextOnly entries that were consumed as captions for a URL
-    files.retain(|f| !consumed.contains(&(f.id as i32)));
 
     Ok(files)
 }
@@ -488,97 +474,6 @@ fn extract_first_url(text: &str, entities: &[tl::enums::MessageEntity]) -> Optio
     None
 }
 
-/// Strips all URL entity spans from `text`; returns the remainder as a caption,
-/// or None if nothing is left after trimming. Handles Pattern 2 (URL + caption in one message).
-fn extract_caption_from_text(text: &str, entities: &[tl::enums::MessageEntity]) -> Option<String> {
-    if text.trim().is_empty() { return None; }
-
-    let mut url_spans: Vec<(usize, usize)> = Vec::new();
-    for entity in entities {
-        match entity {
-            tl::enums::MessageEntity::Url(e) =>
-                url_spans.push((e.offset as usize, e.length as usize)),
-            tl::enums::MessageEntity::TextUrl(e) =>
-                url_spans.push((e.offset as usize, e.length as usize)),
-            _ => {},
-        }
-    }
-
-    if url_spans.is_empty() {
-        // Bare-text fallback: strip leading/trailing URL
-        if let Some(pos) = text.find("https://").or_else(|| text.find("http://")) {
-            let end = text[pos..].find(char::is_whitespace).map(|e| pos + e).unwrap_or(text.len());
-            let remaining = format!("{}{}", &text[..pos], &text[end..]);
-            let trimmed = remaining.trim().to_string();
-            return if trimmed.is_empty() { None } else { Some(trimmed) };
-        }
-        return None;
-    }
-
-    // Remove spans from end → start so earlier offsets stay valid
-    url_spans.sort_by(|a, b| b.0.cmp(&a.0));
-    let mut chars: Vec<char> = text.chars().collect();
-    for (offset, length) in url_spans {
-        let end = (offset + length).min(chars.len());
-        let start = offset.min(end);
-        chars.drain(start..end);
-    }
-    let result = chars.into_iter().collect::<String>();
-    let trimmed = result.trim().to_string();
-    if trimmed.is_empty() { None } else { Some(trimmed) }
-}
-
-fn same_sender(a: Option<i64>, b: Option<i64>) -> bool {
-    match (a, b) {
-        (Some(x), Some(y)) => x == y,
-        _ => true, // unknown sender (channel msg with no from_id) → allow pairing
-    }
-}
-
-/// Pattern 2: caption in same message wins.
-/// Otherwise scan forward: first TextOnly from same sender within 30s
-/// (stops early if another URL appears).
-fn find_caption(
-    i: usize,
-    msgs: &[CollectedMsg],
-    consumed: &mut HashSet<i32>,
-    in_msg_cap: Option<String>,
-) -> Option<String> {
-    let url_id = msgs[i].id;
-
-    // Pattern 2: caption inside the same message wins
-    if let Some(cap) = in_msg_cap {
-        log::info!("[5A] Pattern2  msg={} caption={:?}", url_id, cap);
-        return Some(cap);
-    }
-
-    let url_date = msgs[i].date_raw as i64;
-
-    // Forward scan: first TextOnly within 30s, stopping at the next URL
-    for j in (i + 1)..msgs.len() {
-        let next = &msgs[j];
-        let dt = (next.date_raw as i64) - url_date;
-        if dt > 30 {
-            log::info!("[5A] forward scan stopped: 30s elapsed at msg={}", next.id);
-            break;
-        }
-        if matches!(next.kind, MsgKind::Link { .. }) {
-            log::info!("[5A] forward scan stopped: next URL at msg={}", next.id);
-            break;
-        }
-        if matches!(next.kind, MsgKind::TextOnly)
-            && !consumed.contains(&next.id)
-            && same_sender(msgs[i].sender, next.sender)
-        {
-            log::info!("[5A] ForwardCaption url_msg={} consumed_text_msg={} caption={:?}", url_id, next.id, next.text.trim());
-            consumed.insert(next.id);
-            return Some(next.text.trim().to_string());
-        }
-    }
-
-    log::info!("[5A] no caption found for url_msg={}", url_id);
-    None
-}
 
 #[tauri::command]
 pub async fn cmd_search_global(

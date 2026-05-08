@@ -69,8 +69,8 @@ export function FileExplorer({
     editingFileId, onStartEditNote, onSaveNote, onCancelNote,
     onFileClick, onDelete, onDownload, onPreview, onManualUpload, onSelectionClear, onToggleSelection, onDrop, onDragStart, onDragEnd
 }: FileExplorerProps) {
-    const [sortField, setSortField] = useState<SortField>('name');
-    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+    const [sortField, setSortField] = useState<SortField>('date');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: TelegramFile } | null>(null);
 
     const parentRef = useRef<HTMLDivElement>(null);
