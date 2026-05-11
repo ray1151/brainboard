@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tauri_plugin_store::StoreExt;
 
 // ── Shared output type ────────────────────────────────────────────────────────
 
@@ -215,6 +216,142 @@ pub async fn cmd_fetch_link_preview(url: String) -> Result<LinkPreview, String> 
         "youtube" => fetch_youtube(&client, &url).await,
         _ => fetch_generic(&client, &url).await,
     }
+}
+
+// ── Instagram via Apify ───────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+struct ApifyPost {
+    #[serde(rename = "displayUrl", default)]
+    display_url: String,
+    #[serde(rename = "thumbnailUrl", default)]
+    thumbnail_url: String,
+    #[serde(rename = "videoUrl", default)]
+    video_url: String,
+    #[serde(rename = "ownerUsername", default)]
+    owner_username: String,
+    #[serde(rename = "ownerFullName", default)]
+    owner_full_name: String,
+    #[serde(default)]
+    caption: Option<String>,
+}
+
+/// Fetches an Instagram reel/post thumbnail via Apify.
+/// Reads the API key from brainboard-config.json — never hardcoded.
+/// Returns "no_apify_key" error when no key is configured so the caller
+/// can silently fall back to the favicon without showing an error.
+#[tauri::command]
+pub async fn cmd_fetch_instagram_preview(
+    url: String,
+    app_handle: tauri::AppHandle,
+) -> Result<LinkPreview, String> {
+    let store = app_handle
+        .store("brainboard-config.json")
+        .map_err(|e| format!("store: {}", e))?;
+
+    let api_key = store
+        .get("apifyKey")
+        .and_then(|v| v.as_str().map(String::from))
+        .ok_or_else(|| "no_apify_key".to_string())?;
+
+    log::info!("[IG] apify key found (len={}), scraping: {}", api_key.len(), url);
+
+    let apify_url = format!(
+        "https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items\
+         ?token={}&timeout=30",
+        api_key
+    );
+
+    let body = serde_json::json!({
+        "directUrls": [url],
+        "resultsType": "posts",
+        "resultsLimit": 1
+    });
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(35))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let resp = client
+        .post(&apify_url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("apify request failed: {}", e))?;
+
+    let status = resp.status();
+    let body_text = resp.text().await.map_err(|e| format!("apify read body: {}", e))?;
+    log::info!("[IG] apify status: {}", status);
+    log::info!("[IG] apify body: {}", &body_text[..body_text.len().min(2000)]);
+
+    if !status.is_success() {
+        return Err(format!("apify status {}: {}", status, &body_text[..body_text.len().min(200)]));
+    }
+
+    let posts: Vec<ApifyPost> = serde_json::from_str(&body_text)
+        .map_err(|e| format!("apify parse failed: {} — body: {}", e, &body_text[..body_text.len().min(200)]))?;
+
+    log::info!("[IG] apify returned {} posts", posts.len());
+
+    let post = posts
+        .into_iter()
+        .next()
+        .ok_or_else(|| "apify: no results".to_string())?;
+
+    log::info!("[IG] parsed post: displayUrl={:?} thumbnailUrl={:?} videoUrl={:?} owner={:?} fullName={:?}",
+        post.display_url, post.thumbnail_url, post.video_url, post.owner_username, post.owner_full_name);
+
+    let description = post
+        .caption
+        .as_deref()
+        .unwrap_or("")
+        .chars()
+        .take(100)
+        .collect::<String>();
+
+    // Instagram CDN blocks hotlinking from browser origins, so download the image
+    // in Rust (no origin restriction) and return a base64 data URL instead.
+    let thumbnail_data_url = if !post.display_url.is_empty() {
+        let img_resp = client
+            .get(&post.display_url)
+            .header("Referer", "https://www.instagram.com/")
+            .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .send()
+            .await;
+        match img_resp {
+            Ok(r) if r.status().is_success() => {
+                let content_type = r.headers()
+                    .get("content-type")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("image/jpeg")
+                    .split(';').next().unwrap_or("image/jpeg")
+                    .to_string();
+                match r.bytes().await {
+                    Ok(bytes) => {
+                        use base64::{Engine as _, engine::general_purpose::STANDARD};
+                        let b64 = STANDARD.encode(&bytes);
+                        log::info!("[IG] image downloaded: {} bytes, type={}", bytes.len(), content_type);
+                        format!("data:{};base64,{}", content_type, b64)
+                    }
+                    Err(e) => { log::warn!("[IG] image read failed: {}", e); String::new() }
+                }
+            }
+            Ok(r) => { log::warn!("[IG] image fetch status: {}", r.status()); String::new() }
+            Err(e) => { log::warn!("[IG] image fetch failed: {}", e); String::new() }
+        }
+    } else {
+        String::new()
+    };
+
+    Ok(LinkPreview {
+        url,
+        title: post.owner_username,
+        description,
+        thumbnail_url: thumbnail_data_url,
+        domain: "instagram.com".to_string(),
+        link_type: "instagram".to_string(),
+    })
 }
 
 /// Kept for backward compatibility — test button in TopBar uses this.

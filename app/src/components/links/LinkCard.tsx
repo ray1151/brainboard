@@ -102,50 +102,129 @@ export function LinkCard({
         setThumbSrc(null);
 
         (async () => {
-            // 1. Telegram pre-fetched photo — best quality, no extra network round-trip
-            if (file.has_telegram_thumb) {
-                try {
-                    const b64 = await invoke<string>('cmd_get_link_thumbnail', {
-                        messageId: file.id,
-                        folderId: activeFolderId ?? null,
-                    });
-                    if (!cancelled && b64) { setThumbSrc(b64); setLoading(false); return; }
-                } catch { /* fall through */ }
-            }
+            if (linkType === 'instagram') {
+                // Instagram waterfall: cache → Apify → Telegram thumb → OG → favicon
+                console.log('[IG] attempting fetch for:', url, 'linkType:', linkType);
 
-            // 2. Local cache hit
-            const cached = await getCachedPreview(url);
-            if (!cancelled && cached?.thumbnailUrl) {
-                setThumbSrc(cached.thumbnailUrl);
-                setLoading(false);
-                return;
-            }
-
-            // 3. OG scrape → save to cache → use thumbnail_url
-            try {
-                const preview = await invoke<LinkPreviewResponse>('cmd_fetch_link_preview', { url });
-                const data: Omit<CachedPreview, 'fetchedAt'> = {
-                    title: preview.title || file.og_title || domain,
-                    thumbnailUrl: preview.thumbnail_url,
-                    description: preview.description || file.og_description || '',
-                    domain: preview.domain || domain,
-                    type: (preview.type as LinkType) || linkType,
-                    autoNoted: false,
-                };
-                await upsertCachedPreview(url, data);
-                if (!cancelled && preview.thumbnail_url) {
-                    setThumbSrc(preview.thumbnail_url);
+                // 1. Cache hit
+                const cached = await getCachedPreview(url);
+                if (!cancelled && cached?.thumbnailUrl) {
+                    setThumbSrc(cached.thumbnailUrl);
                     setLoading(false);
                     return;
                 }
-            } catch { /* fall through */ }
 
-            // 4. Google favicon fallback
-            if (!cancelled) {
-                setThumbSrc(
-                    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
-                );
-                setLoading(false);
+                // 2. Apify (real reel thumbnails)
+                try {
+                    console.log('[IG] calling cmd_fetch_instagram_preview for', url);
+                    const preview = await invoke<LinkPreviewResponse>('cmd_fetch_instagram_preview', { url });
+                    console.log('[IG] apify result:', preview);
+                    const data: Omit<CachedPreview, 'fetchedAt'> = {
+                        title: preview.title || domain,
+                        thumbnailUrl: preview.thumbnail_url,
+                        description: preview.description || '',
+                        domain: 'instagram.com',
+                        type: 'instagram',
+                        autoNoted: false,
+                    };
+                    await upsertCachedPreview(url, data);
+                    if (!cancelled && preview.thumbnail_url) {
+                        setThumbSrc(preview.thumbnail_url);
+                        setLoading(false);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('[IG] apify failed:', e);
+                }
+
+                // 3. Telegram cached thumb (fallback — often empty for Instagram)
+                if (file.has_telegram_thumb) {
+                    try {
+                        const b64 = await invoke<string>('cmd_get_link_thumbnail', {
+                            messageId: file.id,
+                            folderId: activeFolderId ?? null,
+                        });
+                        if (!cancelled && b64 && b64.length >= 100) {
+                            setThumbSrc(b64);
+                            setLoading(false);
+                            return;
+                        }
+                    } catch { /* fall through */ }
+                }
+
+                // 4. Generic OG scrape
+                try {
+                    const preview = await invoke<LinkPreviewResponse>('cmd_fetch_link_preview', { url });
+                    const data: Omit<CachedPreview, 'fetchedAt'> = {
+                        title: preview.title || file.og_title || domain,
+                        thumbnailUrl: preview.thumbnail_url,
+                        description: preview.description || file.og_description || '',
+                        domain: preview.domain || domain,
+                        type: 'instagram',
+                        autoNoted: false,
+                    };
+                    await upsertCachedPreview(url, data);
+                    if (!cancelled && preview.thumbnail_url) {
+                        setThumbSrc(preview.thumbnail_url);
+                        setLoading(false);
+                        return;
+                    }
+                } catch { /* fall through */ }
+
+                // 5. Favicon fallback
+                if (!cancelled) {
+                    setThumbSrc(`https://www.google.com/s2/favicons?domain=instagram.com&sz=128`);
+                    setLoading(false);
+                }
+
+            } else {
+                // Non-Instagram waterfall: Telegram thumb → cache → OG → favicon
+
+                // 1. Telegram pre-fetched photo — best quality, no extra network round-trip
+                if (file.has_telegram_thumb) {
+                    try {
+                        const b64 = await invoke<string>('cmd_get_link_thumbnail', {
+                            messageId: file.id,
+                            folderId: activeFolderId ?? null,
+                        });
+                        if (!cancelled && b64 && b64.length >= 100) { setThumbSrc(b64); setLoading(false); return; }
+                    } catch { /* fall through */ }
+                }
+
+                // 2. Local cache hit
+                const cached = await getCachedPreview(url);
+                if (!cancelled && cached?.thumbnailUrl) {
+                    setThumbSrc(cached.thumbnailUrl);
+                    setLoading(false);
+                    return;
+                }
+
+                // 3. OG scrape → save to cache → use thumbnail_url
+                try {
+                    const preview = await invoke<LinkPreviewResponse>('cmd_fetch_link_preview', { url });
+                    const data: Omit<CachedPreview, 'fetchedAt'> = {
+                        title: preview.title || file.og_title || domain,
+                        thumbnailUrl: preview.thumbnail_url,
+                        description: preview.description || file.og_description || '',
+                        domain: preview.domain || domain,
+                        type: (preview.type as LinkType) || linkType,
+                        autoNoted: false,
+                    };
+                    await upsertCachedPreview(url, data);
+                    if (!cancelled && preview.thumbnail_url) {
+                        setThumbSrc(preview.thumbnail_url);
+                        setLoading(false);
+                        return;
+                    }
+                } catch { /* fall through */ }
+
+                // 4. Google favicon fallback
+                if (!cancelled) {
+                    setThumbSrc(
+                        `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
+                    );
+                    setLoading(false);
+                }
             }
         })();
 

@@ -21,6 +21,7 @@ import { ExternalDropBlocker } from './dashboard/ExternalDropBlocker';
 import { PdfViewer } from './dashboard/PdfViewer';
 
 import { LinksView } from './links/LinksView';
+import { SettingsModal } from './dashboard/SettingsModal';
 
 // Hooks
 import { useTelegramConnection } from '../hooks/useTelegramConnection';
@@ -44,6 +45,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
     const { notes, setNotes } = useNotes();
     const { links, setLinks } = useLinks();
     const [activeSection, setActiveSection] = useState<'files' | 'links' | 'all-files' | 'all-links'>('files');
+    const [showSettings, setShowSettings] = useState(false);
     const [editingFileId, setEditingFileId] = useState<number | null>(null);
 
     const handleStartEditNote = useCallback((fileId: number) => {
@@ -476,6 +478,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                     setViewMode={setViewMode}
                     searchTerm={activeSection === 'files' ? searchTerm : ''}
                     onSearchChange={activeSection === 'files' ? setSearchTerm : () => {}}
+                    onOpenSettings={() => setShowSettings(true)}
                 />
                 {activeSection === 'links' ? (
                     <LinksView
@@ -579,6 +582,8 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                 />
             )}
 
+
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
             <UploadQueue
                 items={uploadQueue}
